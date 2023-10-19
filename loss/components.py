@@ -74,7 +74,7 @@ class BasicClassificationLoss:
         Returns:
             torch.Tensor: loss
         """
-        return self.base_loss(estimation["pred_logits"], target["target_logits"])
+        return self.base_loss(estimation["pred_logits"], target["class"])
 
 
 def build_classification_loss(

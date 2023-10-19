@@ -1,0 +1,31 @@
+model_name: "mnist_fcn"
+
+loss:
+
+  aggregator_type: "weighted_sum"
+
+  ce_loss:
+    type: "basic_cls"
+    weight: 1.0
+    base_loss: "ce"
+
+learn:
+  learning_rate: 0.001
+  weight_decay: 0.02
+  batch_size: 128
+  epochs: 20
+  beta_ema: 0.9999
+  gradient_clip: 0.1
+  eval_split_factor: 0.05
+  amp: False
+
+  num_devices: 1
+  num_workers: 4
+
+  save_path: "saved/"
+
+  scheduler:
+    type: "none"
+    loss_monitor: "step"
+    intervals: "training_total_loss"
+    frequency: 1

@@ -28,7 +28,7 @@ class LossAggregator(Protocol):
 
     components: list[LossComponent]
 
-    def compute(
+    def __call__(
         self,
         estimation: dict[str, torch.Tensor],
         target: dict[str, torch.Tensor],
@@ -53,7 +53,7 @@ class WeightedSumAggregator:
 
     components: list[LossComponent]
 
-    def compute(
+    def __call__(
         self, estimation: dict[str, torch.Tensor], target: dict[str, torch.Tensor]
     ) -> LossOutput:
         """
