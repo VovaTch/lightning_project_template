@@ -1,2 +1,4 @@
-# lightning_project_template
-Pytorch Lightning project template, Vova style
+# Lightning Project Template
+
+This project template implements a simple MNIST classification code with a fully connected network.
+Train via `python -m scripts.train -a mnist_fcn`
