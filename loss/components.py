@@ -47,9 +47,6 @@ class LossComponent(Protocol):
         ...
 
 
-LossComponentFactory = Callable[[str, dict[str, Any]], LossComponent]
-
-
 # >>>>>>>>>>>>>> ACTUAL COMPONENT IMPLEMENTATION
 @dataclass
 class BasicClassificationLoss:
@@ -96,6 +93,7 @@ def build_classification_loss(
 
 # >>>>>>>>>>>>>>>>>>>>>>>>>>> END OF ACTUAL COMPONENT IMPLEMENTATION
 
+LossComponentFactory = Callable[[str, dict[str, Any]], LossComponent]
 
 COMPONENT_FACTORIES: dict[str, LossComponentFactory] = {
     "basic_cls": build_classification_loss

@@ -1,6 +1,5 @@
 from typing import Any
 
-import pytest
 import torch
 
 from loss.aggregators import build_loss_aggregator
