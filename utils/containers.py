@@ -45,7 +45,7 @@ def parse_learning_parameters_from_cfg(cfg: dict[str, Any]) -> LearningParameter
         epochs=learning_params["epochs"],
         beta_ema=learning_params["beta_ema"],
         gradient_clip=learning_params["gradient_clip"],
-        save_path=learning_params["cfg_path"],
+        save_path=learning_params["save_path"],
         eval_split_factor=learning_params["eval_split_factor"],
         amp=learning_params["amp"],
         loss_monitor=learning_params["scheduler"]["loss_monitor"],

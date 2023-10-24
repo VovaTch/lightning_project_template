@@ -23,6 +23,7 @@ class BaseLightningModule(pl.LightningModule):
         self,
         model: nn.Module,
         learning_params: LearningParameters,
+        transforms: nn.Sequential | None = None,
         loss_aggregator: LossAggregator | None = None,
         optimizer_builder: OptimizerBuilder | None = None,
         scheduler_builder: SchedulerBuilder | None = None,
@@ -31,6 +32,7 @@ class BaseLightningModule(pl.LightningModule):
         self.model = model
         self.learning_params = learning_params
         self.loss_aggregator = loss_aggregator
+        self.transforms = transforms
 
         # Build optimizer and scheduler
         if optimizer_builder is not None:
@@ -77,21 +79,21 @@ class BaseLightningModule(pl.LightningModule):
             raise RuntimeError("For training, an optimizer is required.")
         if self.loss_aggregator is None:
             raise RuntimeError("For training, must include a loss aggregator.")
-        return self.step(batch)  # type: ignore
+        return self.step(batch, "training")  # type: ignore
 
     def validation_step(
         self, batch: dict[str, Any], batch_idx: int
     ) -> STEP_OUTPUT | None:
-        return self.step(batch)
+        return self.step(batch, "validation")
 
-    def step(self, batch: dict[str, Any]) -> torch.Tensor | None:
+    def step(self, batch: dict[str, Any], phase: str) -> torch.Tensor | None:
         output = self.forward(batch)
         if self.loss_aggregator is None:
             return
         loss = self.loss_aggregator(output, batch)
-        loss_total = self.handle_loss(loss)
+        loss_total = self.handle_loss(loss, phase)
         return loss_total
 
     @abstractmethod
-    def handle_loss(self, loss: LossOutput) -> torch.Tensor:
+    def handle_loss(self, loss: LossOutput, phase: str) -> torch.Tensor:
         ...
