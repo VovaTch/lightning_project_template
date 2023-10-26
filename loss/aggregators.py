@@ -3,6 +3,8 @@ from typing import Any, Protocol
 
 import torch
 
+from utils.others import RegisterClass
+
 from .components import LossComponent, COMPONENT_FACTORIES
 
 
@@ -45,6 +47,10 @@ class LossAggregator(Protocol):
         ...
 
 
+AGGREGATORS: dict[str, type[LossAggregator]] = {}
+
+
+@RegisterClass(AGGREGATORS, "weighted_sum")
 @dataclass
 class WeightedSumAggregator:
     """
@@ -75,9 +81,6 @@ class WeightedSumAggregator:
             loss.individuals[component.name] = ind_loss
 
         return loss
-
-
-AGGREGATORS: dict[str, type[LossAggregator]] = {"weighted_sum": WeightedSumAggregator}
 
 
 def build_loss_aggregator(cfg: dict[str, Any]) -> LossAggregator:

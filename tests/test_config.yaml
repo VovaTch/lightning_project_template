@@ -36,3 +36,4 @@ model_fcn:
   num_layers: 7
   activation_function: "gelu"
 
+data_path: "data"

@@ -43,8 +43,10 @@ class BaseLightningModule(pl.LightningModule):
                 lr=learning_params.learning_rate,
                 weight_decay=learning_params.weight_decay,
             )
-        if scheduler_builder is not None:
-            self.scheduler = scheduler_builder(self)
+
+        self.scheduler = (
+            scheduler_builder(self) if scheduler_builder is not None else None
+        )
 
     def configure_optimizers(self) -> OptimizerLRScheduler:
         if self.scheduler is None:

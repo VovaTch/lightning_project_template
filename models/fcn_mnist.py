@@ -100,7 +100,7 @@ def build_fcn_lightning_module(
     fcn_network = build_fcn_network(cfg)
     learning_params = parse_learning_parameters_from_cfg(cfg)
     loss_aggregator = build_loss_aggregator(cfg)
-    transforms = T.Compose([T.ToTensor(), T.Normalize((0.1307,), (0.3081,))])
+    transforms = T.Compose([T.Normalize((0.1307,), (0.3081,))])
     return LightningFCN(
         fcn_network,
         learning_params,

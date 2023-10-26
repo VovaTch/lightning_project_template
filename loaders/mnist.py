@@ -4,6 +4,7 @@ from pytorch_lightning.utilities.types import EVAL_DATALOADERS, TRAIN_DATALOADER
 
 from torch.utils.data import Dataset, DataLoader
 from torchvision import datasets
+import torchvision.transforms.functional as TF
 import pytorch_lightning as pl
 
 from utils.containers import LearningParameters, parse_learning_parameters_from_cfg
@@ -12,7 +13,7 @@ from .base import Stage
 
 
 class MnistDataset(Dataset):
-    def __init__(self, stage: Stage, data_path: str) -> None:
+    def __init__(self, stage: Stage, data_path: str, preload: bool = False) -> None:
         super().__init__()
         if stage == Stage.TRAIN:
             self.base_dataset = datasets.MNIST(data_path, train=True, download=True)
@@ -21,7 +22,7 @@ class MnistDataset(Dataset):
 
     def __getitem__(self, index: int) -> dict[str, Any]:
         data = self.base_dataset.__getitem__(index)
-        return {"images": data}
+        return {"images": TF.to_tensor(data[0]), "class": data[1]}
 
     def __len__(self):
         return len(self.base_dataset)

@@ -5,6 +5,8 @@ import torch
 import torch.nn as nn
 from torchvision.ops import sigmoid_focal_loss
 
+from utils.others import register_builder
+
 
 LOSS_MODULES: dict[str, nn.Module] = {
     "mse": nn.MSELoss(),
@@ -47,6 +49,11 @@ class LossComponent(Protocol):
         ...
 
 
+LossComponentFactory = Callable[[str, dict[str, Any]], LossComponent]
+
+COMPONENT_FACTORIES: dict[str, LossComponentFactory] = {}
+
+
 # >>>>>>>>>>>>>> ACTUAL COMPONENT IMPLEMENTATION
 @dataclass
 class BasicClassificationLoss:
@@ -74,6 +81,7 @@ class BasicClassificationLoss:
         return self.base_loss(estimation["pred_logits"], target["class"])
 
 
+@register_builder(COMPONENT_FACTORIES, "basic_cls")
 def build_classification_loss(
     name: str, loss_cfg: dict[str, Any]
 ) -> BasicClassificationLoss:
@@ -92,9 +100,3 @@ def build_classification_loss(
 
 
 # >>>>>>>>>>>>>>>>>>>>>>>>>>> END OF ACTUAL COMPONENT IMPLEMENTATION
-
-LossComponentFactory = Callable[[str, dict[str, Any]], LossComponent]
-
-COMPONENT_FACTORIES: dict[str, LossComponentFactory] = {
-    "basic_cls": build_classification_loss
-}

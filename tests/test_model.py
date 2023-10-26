@@ -1,4 +1,4 @@
-from typing import Any
+import numpy as np
 import torch
 
 from models.fcn_mnist import FCN, LightningFCN
@@ -22,3 +22,4 @@ def test_fcn_lightning_forward(fcn_lightning: LightningFCN) -> None:
     fcn_lightning = fcn_lightning.to("cuda")
     input = {"images": torch.rand((5, 28, 28)).to("cuda")}
     output = fcn_lightning.forward(input)
+    assert list(output["pred_logits"].size()) == [5, 10]
