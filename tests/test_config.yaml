@@ -37,3 +37,6 @@ model_fcn:
   activation_function: "gelu"
 
 data_path: "data"
+
+data:
+  type: "mnist"

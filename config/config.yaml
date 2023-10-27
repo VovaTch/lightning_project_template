@@ -27,5 +27,15 @@ learn:
   scheduler:
     type: "none"
     loss_monitor: "step"
-    intervals: "training_total_loss"
+    interval: "training_total_loss"
     frequency: 1
+
+model_fcn:
+  hidden_size: 64
+  num_layers: 7
+  activation_function: "gelu"
+
+data_path: "data"
+
+data:
+  type: "mnist"

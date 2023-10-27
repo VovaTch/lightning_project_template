@@ -16,6 +16,8 @@ OptimizerBuilder = Callable[[pl.LightningModule], torch.optim.Optimizer]
 SchedulerBuilder = Callable[[pl.LightningModule], torch.optim.lr_scheduler._LRScheduler]
 
 ACTIVATION_FUNCTIONS: dict[str, nn.Module] = {"relu": nn.ReLU(), "gelu": nn.GELU()}
+MODELS: dict[str, nn.Module] = {}
+LIGHTNING_MODULES: dict[str, pl.LightningModule] = {}
 
 
 class BaseLightningModule(pl.LightningModule):

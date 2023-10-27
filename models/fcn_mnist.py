@@ -7,7 +7,8 @@ from torchvision import transforms as T
 
 from loss.aggregators import LossOutput, build_loss_aggregator
 from utils.containers import parse_learning_parameters_from_cfg
-from .base import ACTIVATION_FUNCTIONS, BaseLightningModule
+from utils.others import register_builder
+from .base import ACTIVATION_FUNCTIONS, BaseLightningModule, MODELS, LIGHTNING_MODULES
 
 
 @dataclass
@@ -54,7 +55,6 @@ class FCN(nn.Module):
             ]
             + [
                 nn.Linear(fcn_params.hidden_size, fcn_params.hidden_size),
-                nn.LayerNorm(fcn_params.hidden_size),
                 fcn_params.activation_function,
             ]
             * (fcn_params.num_layers - 2)
@@ -75,6 +75,7 @@ class FCN(nn.Module):
         return self.network(x.flatten(start_dim=1))
 
 
+@register_builder(MODELS, "mnist_fcn")
 def build_fcn_network(cfg: dict[str, Any]) -> FCN:
     fcn_params = parse_fcn_params_from_cfg(cfg)
     return FCN(fcn_params)
@@ -94,6 +95,7 @@ class LightningFCN(BaseLightningModule):
         return loss.total
 
 
+@register_builder(LIGHTNING_MODULES, "mnist_fcn")
 def build_fcn_lightning_module(
     cfg: dict[str, Any]
 ) -> LightningFCN:  # TODO: Add optimizers and schedulers

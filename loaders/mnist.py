@@ -8,8 +8,8 @@ import torchvision.transforms.functional as TF
 import pytorch_lightning as pl
 
 from utils.containers import LearningParameters, parse_learning_parameters_from_cfg
-
-from .base import Stage
+from utils.others import register_builder
+from .base import Stage, DATA_MODULES
 
 
 class MnistDataset(Dataset):
@@ -67,6 +67,7 @@ class SeparatedSetModule(pl.LightningDataModule):
         )
 
 
+@register_builder(DATA_MODULES, "mnist")
 def build_mnist_data_module(cfg: dict[str, Any]) -> SeparatedSetModule:
     learning_params = parse_learning_parameters_from_cfg(cfg)
     dataset_path = cfg["data_path"]
