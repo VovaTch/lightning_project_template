@@ -1,6 +1,6 @@
 from __future__ import annotations
 from abc import abstractmethod
-from typing import Any, Callable
+from typing import Any, Callable, Optional
 from matplotlib.font_manager import weight_dict
 
 import pytorch_lightning as pl
@@ -89,6 +89,17 @@ class BaseLightningModule(pl.LightningModule):
         self, batch: dict[str, Any], batch_idx: int
     ) -> STEP_OUTPUT | None:
         return self.step(batch, "validation")
+
+    def test_step(self, batch: dict[str, Any], batch_idx: int) -> STEP_OUTPUT | None:
+        output = self.forward(batch)
+        if self.loss_aggregator is None:
+            return
+        loss = self.loss_aggregator(output, batch)
+        for ind_loss, value in loss.individuals.items():
+            self.log(
+                f"test_{ind_loss}", value, prog_bar=True, on_step=False, on_epoch=True
+            )
+        self.log(f"test_total", loss.total, prog_bar=True, on_step=False, on_epoch=True)
 
     def step(self, batch: dict[str, Any], phase: str) -> torch.Tensor | None:
         output = self.forward(batch)

@@ -12,7 +12,7 @@ def main(args):
     cfg["learn"]["num_devices"] = args.num_devices
     learning_params = parse_learning_parameters_from_cfg(cfg)
     trainer = initialize_trainer(learning_params)
-    model = LIGHTNING_MODULES[args.model](cfg)
+    model = LIGHTNING_MODULES[args.model](cfg, args.resume)
     data_module = DATA_MODULES[args.data_module](cfg)
     trainer.fit(model, data_module)
 
@@ -48,6 +48,13 @@ if __name__ == "__main__":
         type=str,
         default="mnist",
         help="Type of data module used for training",
+    )
+    parser.add_argument(
+        "-r",
+        "--resume",
+        type=str,
+        default=None,
+        help="Checkpoint path to load the model from",
     )
     args = parser.parse_args()
     main(args)

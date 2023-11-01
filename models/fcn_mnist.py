@@ -97,15 +97,24 @@ class LightningFCN(BaseLightningModule):
 
 @register_builder(LIGHTNING_MODULES, "mnist_fcn")
 def build_fcn_lightning_module(
-    cfg: dict[str, Any]
+    cfg: dict[str, Any], weights: str | None = None
 ) -> LightningFCN:  # TODO: Add optimizers and schedulers
     fcn_network = build_fcn_network(cfg)
     learning_params = parse_learning_parameters_from_cfg(cfg)
     loss_aggregator = build_loss_aggregator(cfg)
     transforms = T.Compose([T.Normalize((0.1307,), (0.3081,))])
-    return LightningFCN(
-        fcn_network,
-        learning_params,
-        loss_aggregator=loss_aggregator,
-        transforms=transforms,  # type: ignore
-    )
+    if weights is None:
+        return LightningFCN(
+            fcn_network,
+            learning_params,
+            loss_aggregator=loss_aggregator,
+            transforms=transforms,  # type: ignore
+        )
+    else:
+        return LightningFCN.load_from_checkpoint(
+            weights,
+            model=fcn_network,
+            learning_params=learning_params,
+            loss_aggregator=loss_aggregator,
+            transforms=transforms,
+        )  # type: ignore)

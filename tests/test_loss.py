@@ -21,4 +21,4 @@ def test_loss_aggregator(cfg: dict[str, Any]) -> None:
     target = {"class": torch.randint(0, 10, (4,))}
     loss = loss_aggregator(estimation, target)
     assert list(loss.total.size()) == []
-    assert len(loss.individuals) == 1
+    assert len(loss.individuals) == 2

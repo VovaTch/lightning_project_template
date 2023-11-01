@@ -9,6 +9,10 @@ loss:
     weight: 1.0
     base_loss: "ce"
 
+  correct_ratio_metric:
+    type: "percent_correct"
+  
+
 learn:
   learning_rate: 0.001
   weight_decay: 0.02

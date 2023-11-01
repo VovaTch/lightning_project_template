@@ -76,8 +76,9 @@ class WeightedSumAggregator:
 
         for component in self.components:
             ind_loss = component(estimation, target)
-            loss.total = loss.total.to(ind_loss.device)
-            loss.total += component.weight * ind_loss
+            if component.differentiable:
+                loss.total = loss.total.to(ind_loss.device)
+                loss.total += component.weight * ind_loss
             loss.individuals[component.name] = ind_loss
 
         return loss

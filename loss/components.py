@@ -1,3 +1,4 @@
+from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Callable, Protocol
 
@@ -32,6 +33,7 @@ class LossComponent(Protocol):
     name: str
     weight: float
     base_loss: nn.Module
+    differentiable: bool
 
     def __call__(
         self, estimation: dict[str, torch.Tensor], target: dict[str, torch.Tensor]
@@ -64,6 +66,7 @@ class BasicClassificationLoss:
     name: str
     weight: float
     base_loss: nn.Module
+    differentiable: bool = True
 
     def __call__(
         self, estimation: dict[str, torch.Tensor], target: dict[str, torch.Tensor]
@@ -97,6 +100,50 @@ def build_classification_loss(
     """
     loss_module = LOSS_MODULES[loss_cfg.get("base_loss", "ce")]
     return BasicClassificationLoss(name, loss_cfg.get("weight", 1.0), loss_module)
+
+
+@dataclass
+class PercentCorrect:
+    """
+    Basic metric to count the ratio of the correct number of classifications
+    """
+
+    name: str
+    weight: float
+    base_loss: nn.Module | None = None
+    differentiable: bool = False
+
+    def __call__(
+        self, estimation: dict[str, torch.Tensor], target: dict[str, torch.Tensor]
+    ) -> torch.Tensor:
+        """
+        Call method for outputting the loss
+
+        Args:
+            estimation (dict[str, torch.Tensor]): Network estimation
+            target (dict[str, torch.Tensor]): Ground truth reference
+
+        Returns:
+            torch.Tensor: loss
+        """
+        pred_logits_argmax = torch.argmax(estimation["pred_logits"], dim=1)
+        correct = torch.sum(pred_logits_argmax == target["class"])
+        return correct / torch.numel(pred_logits_argmax)
+
+
+@register_builder(COMPONENT_FACTORIES, "percent_correct")
+def build_percent_correct_metric(name: str, loss_cfg: dict[str, Any]) -> PercentCorrect:
+    """
+    Builds the percent correct metric; this metric does not account into the grad operation
+
+    Args:
+        name (str): Loss name
+        loss_cfg (dict[str, Any]): Loss configuration
+
+    Returns:
+        PercentCorrect: Percent correct loss object
+    """
+    return PercentCorrect(name, 1.0, None)
 
 
 # >>>>>>>>>>>>>>>>>>>>>>>>>>> END OF ACTUAL COMPONENT IMPLEMENTATION
