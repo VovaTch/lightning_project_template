@@ -21,6 +21,11 @@ LIGHTNING_MODULES: dict[str, pl.LightningModule] = {}
 
 
 class BaseLightningModule(pl.LightningModule):
+    """
+    Base Pytorch Lightning Module to handle training, validation, testing, logging into Tensorboard, etc.
+    The model itself is passed as a Pytorch Module, so this Lightning Module is not limited to a single model.
+    """
+
     def __init__(
         self,
         model: nn.Module,
@@ -30,6 +35,24 @@ class BaseLightningModule(pl.LightningModule):
         optimizer_builder: OptimizerBuilder | None = None,
         scheduler_builder: SchedulerBuilder | None = None,
     ) -> None:
+        """
+        Constructor method
+
+        Args:
+            *   model (nn.Module): Base Pytorch model
+            *   learning_params (LearningParameters): Learning parameters object containing all parameters required for
+                learning.
+            *   transforms (nn.Sequential | None, optional): Image transformation sequence, if None, no
+                transforms are performed. Defaults to None.
+            *   loss_aggregator (LossAggregator | None, optional): Loss object that is composed of multiple components.
+                If None, raises an exception when attempting to train. Defaults to None.
+            *   optimizer_builder (OptimizerBuilder | None, optional): Optimizer builder function.
+                Programmed in this way because it requires a model, the function is called during initialization.
+                If None, then AdamW is used. Defaults to None.
+            *   scheduler_builder (SchedulerBuilder | None, optional): Scheduler builder function.
+                Programmed in this way because it requires a model, the function is called during initialization.
+                If None, no scheduler is used. Defaults to None.
+        """
         super().__init__()
         self.model = model
         self.learning_params = learning_params
@@ -51,6 +74,13 @@ class BaseLightningModule(pl.LightningModule):
         )
 
     def configure_optimizers(self) -> OptimizerLRScheduler:
+        """
+        Optimizer configuration Lightning module method. If no scheduler, returns only optimizer.
+        If there is a scheduler, returns a settings dictionary and returned to be used during training.
+
+        Returns:
+            OptimizerLRScheduler: Method output, used internally.
+        """
         if self.scheduler is None:
             return [self.optimizer]
 
@@ -65,6 +95,20 @@ class BaseLightningModule(pl.LightningModule):
     def _configure_scheduler_settings(
         self, interval: str, monitor: str, frequency: int
     ) -> dict[str, Any]:
+        """
+        Utility method to return scheduler configurations to `self.configure_optimizers` method.
+
+        Args:
+            interval (str): Intervals to use the scheduler, either 'step' or 'epoch'.
+            monitor (str): Loss to monitor and base the scheduler on.
+            frequency (int): Frequency to potentially use the scheduler.
+
+        Raises:
+            TypeError: Must include a scheduler
+
+        Returns:
+            dict[str, Any]: Scheduler configuration dictionary
+        """
         if self.scheduler is None:
             raise TypeError("Must include a scheduler")
         return {
@@ -76,9 +120,32 @@ class BaseLightningModule(pl.LightningModule):
 
     @abstractmethod
     def forward(self, input: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
+        """
+        Forward method, to be implemented in a subclass
+
+        Args:
+            input (dict[str, torch.Tensor]): Input dictionary of tensors
+
+        Returns:
+            dict[str, torch.Tensor]: Output dictionary of tensors
+        """
         ...
 
     def training_step(self, batch: dict[str, Any], batch_idx: int) -> STEP_OUTPUT:
+        """
+        Pytorch Lightning standard training step. Uses the loss aggregator to compute the total loss.
+
+        Args:
+            batch (dict[str, Any]): Data batch in a form of a dictionary
+            batch_idx (int): Data index
+
+        Raises:
+            RuntimeError: For training, an optimizer is required (usually shouldn't come to this).
+            RuntimeError: For training, must include a loss aggregator.
+
+        Returns:
+            STEP_OUTPUT: total loss output
+        """
         if self.optimizer is None:
             raise RuntimeError("For training, an optimizer is required.")
         if self.loss_aggregator is None:
@@ -88,9 +155,31 @@ class BaseLightningModule(pl.LightningModule):
     def validation_step(
         self, batch: dict[str, Any], batch_idx: int
     ) -> STEP_OUTPUT | None:
+        """
+        Pytorch lightning validation step. Does not require a loss object this time, but can use it.
+
+
+        Args:
+            batch (dict[str, Any]): Data batch in a form of a dictionary
+            batch_idx (int): Data index
+
+        Returns:
+            STEP_OUTPUT | None: total loss output if there is an aggregator, none if there isn't.
+        """
         return self.step(batch, "validation")
 
     def test_step(self, batch: dict[str, Any], batch_idx: int) -> STEP_OUTPUT | None:
+        """
+        Pytorch lightning test step. Uses the loss aggregator to compute and display all losses during the test
+        if there is an aggregator.
+
+        Args:
+            batch (dict[str, Any]): Data batch in a form of a dictionary
+            batch_idx (int): Data index
+
+        Returns:
+            STEP_OUTPUT | None: total loss output if there is an aggregator, none if there isn't.
+        """
         output = self.forward(batch)
         if self.loss_aggregator is None:
             return
@@ -102,6 +191,16 @@ class BaseLightningModule(pl.LightningModule):
         self.log(f"test_total", loss.total, prog_bar=True, on_step=False, on_epoch=True)
 
     def step(self, batch: dict[str, Any], phase: str) -> torch.Tensor | None:
+        """
+        Utility method to perform the network step and inference.
+
+        Args:
+            batch (dict[str, Any]): Data batch in a form of a dictionary
+            phase (str): Phase, used for logging purposes.
+
+        Returns:
+            torch.Tensor | None: Either the total loss if there is a loss aggregator, or none if there is no aggregator.
+        """
         output = self.forward(batch)
         if self.loss_aggregator is None:
             return
@@ -111,4 +210,14 @@ class BaseLightningModule(pl.LightningModule):
 
     @abstractmethod
     def handle_loss(self, loss: LossOutput, phase: str) -> torch.Tensor:
+        """
+        Utility method to implement in a subclass. Used for logging and additional computations if needed.
+
+        Args:
+            loss (LossOutput): Loss output object
+            phase (str): Phase for logging or other purposes.
+
+        Returns:
+            torch.Tensor: Total loss
+        """
         ...
