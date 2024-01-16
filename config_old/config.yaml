@@ -44,7 +44,7 @@ learn:
   amp: False
 
   # Number of GPU devices to use
-  num_devices: 1
+  num_devices: 0
 
   # Number of CPU workers for data loading
   num_workers: 4

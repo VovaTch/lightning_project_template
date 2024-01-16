@@ -1,10 +1,9 @@
 from __future__ import annotations
 from abc import abstractmethod
-from typing import Any, Callable, Optional
-from matplotlib.font_manager import weight_dict
+from typing import Any, Callable
 
-import pytorch_lightning as pl
-from pytorch_lightning.utilities.types import STEP_OUTPUT, OptimizerLRScheduler
+import lightning as L
+from lightning.pytorch.utilities.types import STEP_OUTPUT, OptimizerLRScheduler
 import torch
 import torch.nn as nn
 from loss.aggregators import LossAggregator, LossOutput
@@ -12,15 +11,15 @@ from loss.aggregators import LossAggregator, LossOutput
 from utils.containers import LearningParameters
 
 
-OptimizerBuilder = Callable[[pl.LightningModule], torch.optim.Optimizer]
-SchedulerBuilder = Callable[[pl.LightningModule], torch.optim.lr_scheduler._LRScheduler]
+OptimizerBuilder = Callable[[L.LightningModule], torch.optim.Optimizer]
+SchedulerBuilder = Callable[[L.LightningModule], torch.optim.lr_scheduler._LRScheduler]
 
 ACTIVATION_FUNCTIONS: dict[str, nn.Module] = {"relu": nn.ReLU(), "gelu": nn.GELU()}
 MODELS: dict[str, nn.Module] = {}
-LIGHTNING_MODULES: dict[str, pl.LightningModule] = {}
+LIGHTNING_MODULES: dict[str, L.LightningModule] = {}
 
 
-class BaseLightningModule(pl.LightningModule):
+class BaseLightningModule(L.LightningModule):
     """
     Base Pytorch Lightning Module to handle training, validation, testing, logging into Tensorboard, etc.
     The model itself is passed as a Pytorch Module, so this Lightning Module is not limited to a single model.

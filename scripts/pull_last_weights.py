@@ -4,6 +4,32 @@ from typing import Any
 import subprocess
 
 
+def get_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Script to pull the last weights from a model"
+    )
+    parser.add_argument(
+        "-p", "--path", type=str, default="saved", help="Path for all the saved files"
+    )
+    parser.add_argument(
+        "-n", "--model_name", type=str, default="mnist_fcn", help="Name of the model"
+    )
+    parser.add_argument(
+        "-f",
+        "--file_name",
+        type=str,
+        default="mnist_best",
+        help="File name to copy the weights into",
+    )
+    parser.add_argument(
+        "-del",
+        "--delete",
+        action="store_true",
+        help="Delete history; default is False",
+    )
+    return parser.parse_args()
+
+
 def _parse_args(args: Any) -> tuple[str, str, str, bool]:
     save_path = args.path
     model_name = args.model_name
@@ -46,10 +72,13 @@ def find_latest_version_dir(version_dirs: list[str]) -> str:
     return version_dirs[max_version_idx]
 
 
-def main(args) -> None:
+def main() -> None:
     """
     Script to copy the latest version of a model into a "weights" folder.
     """
+
+    args = get_args()
+
     save_path, model_name, file_name, delete_history = _parse_args(args)
     saved_versions = os.path.join(save_path, model_name)
     version_dirs = list_direct_subdirs(saved_versions)
@@ -74,27 +103,4 @@ def main(args) -> None:
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="Script that takes the last weights and possibly deletes the history"
-    )
-    parser.add_argument(
-        "-p", "--path", type=str, default="saved", help="Path for all the saved files"
-    )
-    parser.add_argument(
-        "-n", "--model_name", type=str, default="mnist_fcn", help="Name of the model"
-    )
-    parser.add_argument(
-        "-f",
-        "--file_name",
-        type=str,
-        default="mnist_best",
-        help="File name to copy the weights into",
-    )
-    parser.add_argument(
-        "-del",
-        "--delete",
-        action="store_true",
-        help="Delete history; default is False",
-    )
-    args = parser.parse_args()
-    main(args)
+    main()

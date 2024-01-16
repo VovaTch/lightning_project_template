@@ -1,16 +1,16 @@
-import pytorch_lightning as pl
-from pytorch_lightning.callbacks import (
+import lightning as L
+from lightning.pytorch.callbacks import (
     ModelCheckpoint,
     ModelSummary,
     LearningRateMonitor,
 )
-from pytorch_lightning.loggers import TensorBoardLogger
+from lightning.pytorch.loggers import TensorBoardLogger
 
 from .ema import EMA
 from .containers import LearningParameters
 
 
-def initialize_trainer(learning_parameters: LearningParameters) -> pl.Trainer:
+def initialize_trainer(learning_parameters: LearningParameters) -> L.Trainer:
     """
     Initializes a Pytorch Lightning training, given a learning parameters object
 
@@ -40,7 +40,7 @@ def initialize_trainer(learning_parameters: LearningParameters) -> pl.Trainer:
     precision = 16 if learning_parameters.amp else 32
 
     model_summary = ModelSummary(max_depth=3)
-    trainer = pl.Trainer(
+    trainer = L.Trainer(
         gradient_clip_val=learning_parameters.gradient_clip,
         logger=logger,
         callbacks=[

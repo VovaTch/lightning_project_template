@@ -1,23 +1,16 @@
 import argparse
+from sys import version
+
+from omegaconf import DictConfig
+import hydra
 
 from loaders import DATA_MODULES
 from utils.containers import parse_learning_parameters_from_cfg
-from utils.others import load_config
 from utils.trainer import initialize_trainer
 from models import LIGHTNING_MODULES
 
 
-def main(args):
-    cfg = load_config(args.config)
-    cfg["learn"]["num_devices"] = args.num_devices
-    learning_params = parse_learning_parameters_from_cfg(cfg)
-    trainer = initialize_trainer(learning_params)
-    model = LIGHTNING_MODULES[args.model](cfg, args.resume)
-    data_module = DATA_MODULES[args.data_module](cfg)
-    trainer.fit(model, data_module)
-
-
-if __name__ == "__main__":
+def get_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Training script for the MNIST template"
     )
@@ -56,5 +49,20 @@ if __name__ == "__main__":
         default=None,
         help="Checkpoint path to load the model from",
     )
-    args = parser.parse_args()
-    main(args)
+    return parser.parse_args()
+
+
+@hydra.main(version_base=None, config_path="../config", config_name="config")
+def main(cfg: DictConfig) -> None:
+    args = get_args()
+
+    cfg.learning.num_devices = args.num_devices
+    learning_params = parse_learning_parameters_from_cfg(cfg)
+    trainer = initialize_trainer(learning_params)
+    model = LIGHTNING_MODULES[args.model](cfg, args.resume)
+    data_module = DATA_MODULES[args.data_module](cfg)
+    trainer.fit(model, data_module)
+
+
+if __name__ == "__main__":
+    main()

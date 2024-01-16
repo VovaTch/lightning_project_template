@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from typing import Any, Protocol
+from omegaconf import DictConfig
 
 import torch
 
@@ -84,22 +85,20 @@ class WeightedSumAggregator:
         return loss
 
 
-def build_loss_aggregator(cfg: dict[str, Any]) -> LossAggregator:
+def build_loss_aggregator(cfg: DictConfig) -> LossAggregator:
     """
     Builds a loss aggregator object
 
     Args:
-        cfg (dict[str, Any]): Configuration dictionary
+        cfg (DictConfig): Configuration dictionary
 
     Returns:
         LossAggregator: Loss aggregation object
     """
-    aggregator_type = cfg["loss"]["aggregator_type"]
+    aggregator_type = cfg.loss.aggregator.type
     components = []
-    for component_key in cfg["loss"]:
-        if component_key == "aggregator_type":
-            continue
-        component_cfg = cfg["loss"][component_key]
+    for component_key in cfg.loss.components:
+        component_cfg = cfg.loss.components[component_key]
         component_type = component_cfg["type"]
         component = COMPONENT_FACTORIES[component_type](component_key, component_cfg)
         components.append(component)

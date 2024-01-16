@@ -1,21 +1,4 @@
-from typing import Any, Callable
-
-import yaml
-
-
-def load_config(path: str) -> dict[str, Any]:
-    """
-    Loads a yaml configuration file from path into a dictionary
-
-    Args:
-        path (str): File path
-
-    Returns:
-        dict[str, Any]: Configuration dictionary
-    """
-    with open(path, "r") as f:
-        cfg = yaml.safe_load(f)
-    return cfg
+from typing import Callable
 
 
 def register_builder(registry: dict[str, Callable], key: str) -> Callable:

@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from typing import Any
+from omegaconf import DictConfig
 
 import torch
 import torch.nn as nn
@@ -37,12 +38,12 @@ class FCNParams:
     activation_function: nn.Module
 
 
-def parse_fcn_params_from_cfg(cfg: dict[str, Any]) -> FCNParams:
+def parse_fcn_params_from_cfg(cfg: DictConfig) -> FCNParams:
     """
     Parse the simple Fully Connected Network (FCN) parameters from a configuration dictionary.
 
     Args:
-        cfg (dict): A dictionary containing configuration parameters for the FCN architecture.
+        cfg (DictConfig): A dictionary containing configuration parameters for the FCN architecture.
 
     Returns:
         FCNParams: An instance of the `FCNParams` data class containing FCN architecture parameters.
@@ -54,11 +55,9 @@ def parse_fcn_params_from_cfg(cfg: dict[str, Any]) -> FCNParams:
         the FCN architecture.
     """
     return FCNParams(
-        hidden_size=cfg["model_fcn"]["hidden_size"],
-        num_layers=cfg["model_fcn"]["num_layers"],
-        activation_function=ACTIVATION_FUNCTIONS[
-            cfg["model_fcn"]["activation_function"]
-        ],
+        hidden_size=cfg.model.hidden_size,
+        num_layers=cfg.model.num_layers,
+        activation_function=ACTIVATION_FUNCTIONS[cfg.model.activation_function],
     )
 
 
@@ -110,12 +109,12 @@ class FCN(nn.Module):
 
 
 @register_builder(MODELS, "mnist_fcn")
-def build_fcn_network(cfg: dict[str, Any]) -> FCN:
+def build_fcn_network(cfg: DictConfig) -> FCN:
     """
     Builds an FCN network for this example from a configuration dictionary
 
     Args:
-        cfg (dict[str, Any]): Configuration dictionary
+        cfg (DictConfig): Configuration dictionary
 
     Returns:
         FCN: Model instance returned
@@ -163,13 +162,13 @@ class LightningFCN(BaseLightningModule):
 
 @register_builder(LIGHTNING_MODULES, "mnist_fcn")
 def build_fcn_lightning_module(
-    cfg: dict[str, Any], weights: str | None = None
+    cfg: DictConfig, weights: str | None = None
 ) -> LightningFCN:  # TODO: Add optimizers and schedulers
     """
     Builds an FCN lightning module given configuration dictionary and possible weights.
 
     Args:
-        *   cfg (dict[str, Any]): Configuration dictionary
+        *   cfg (DictConfig): Configuration dictionary
         *   weights (str | None, optional): Weights path to load, if None, then Lightning initializes the weights
             randomly. Defaults to None.
 

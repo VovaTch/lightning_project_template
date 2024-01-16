@@ -1,11 +1,12 @@
 from __future__ import annotations
 from typing import Any
-from pytorch_lightning.utilities.types import EVAL_DATALOADERS, TRAIN_DATALOADERS
+from omegaconf import DictConfig
 
 from torch.utils.data import Dataset, DataLoader
 from torchvision import datasets
 import torchvision.transforms.functional as TF
-import pytorch_lightning as pl
+import lightning as L
+from lightning.pytorch.utilities.types import EVAL_DATALOADERS, TRAIN_DATALOADERS
 
 from utils.containers import LearningParameters, parse_learning_parameters_from_cfg
 from utils.others import register_builder
@@ -57,11 +58,7 @@ class MnistDataset(Dataset):
         return len(self.base_dataset)
 
 
-import pytorch_lightning as pl
-from torch.utils.data import DataLoader, Dataset
-
-
-class SeparatedSetModule(pl.LightningDataModule):
+class SeparatedSetModule(L.LightningDataModule):
     """
     LightningDataModule subclass for managing separated datasets (train, validation, and test) in a PyTorch Lightning project.
 
@@ -139,12 +136,12 @@ class SeparatedSetModule(pl.LightningDataModule):
 
 
 @register_builder(DATA_MODULES, "mnist")
-def build_mnist_data_module(cfg: dict[str, Any]) -> SeparatedSetModule:
+def build_mnist_data_module(cfg: DictConfig) -> SeparatedSetModule:
     """
     Build and return a `SeparatedSetModule` for managing MNIST datasets based on the provided configuration.
 
     Args:
-        cfg (dict): A dictionary containing configuration parameters for building the data module.
+        cfg (DictConfig): A dictionary containing configuration parameters for building the data module.
 
     Returns:
         SeparatedSetModule: A `SeparatedSetModule` instance for managing the MNIST datasets during training, validation, and testing.
@@ -155,7 +152,7 @@ def build_mnist_data_module(cfg: dict[str, Any]) -> SeparatedSetModule:
         and returns a data module ready for use in a PyTorch Lightning project.
     """
     learning_params = parse_learning_parameters_from_cfg(cfg)
-    dataset_path = cfg["data_path"]
+    dataset_path = cfg.data_cfg.dataset_path
     train_dataset = MnistDataset(Stage.TRAIN, dataset_path)
     val_dataset = MnistDataset(Stage.VALIDATION, dataset_path)
     return SeparatedSetModule(learning_params, train_dataset, val_dataset)

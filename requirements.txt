@@ -1,5 +1,9 @@
-pytorch_lightning
+lightning
 tqdm
 numpy
 pytest
 pyyaml
+hydra-core
+matplotlib
+tensorboard
+fire

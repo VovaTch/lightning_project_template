@@ -1,6 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Callable, Protocol
+from omegaconf import DictConfig
 
 import torch
 import torch.nn as nn
@@ -51,7 +52,7 @@ class LossComponent(Protocol):
         ...
 
 
-LossComponentFactory = Callable[[str, dict[str, Any]], LossComponent]
+LossComponentFactory = Callable[[str, DictConfig], LossComponent]
 
 COMPONENT_FACTORIES: dict[str, LossComponentFactory] = {}
 
@@ -86,14 +87,14 @@ class BasicClassificationLoss:
 
 @register_builder(COMPONENT_FACTORIES, "basic_cls")
 def build_classification_loss(
-    name: str, loss_cfg: dict[str, Any]
+    name: str, loss_cfg: DictConfig
 ) -> BasicClassificationLoss:
     """
     Builds basic classification loss with cross-entropy-loss as default.
 
     Args:
         name (str): Loss name
-        loss_cfg (dict[str, Any]): Loss configuration
+        loss_cfg (DictConfig): Loss configuration
 
     Returns:
         BasicClassificationLoss: Basic classification loss object

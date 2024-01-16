@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from typing import Any
 
+from omegaconf import DictConfig
+
 
 @dataclass
 class LearningParameters:
@@ -26,17 +28,17 @@ class LearningParameters:
     frequency: int = 1
 
 
-def parse_learning_parameters_from_cfg(cfg: dict[str, Any]) -> LearningParameters:
+def parse_learning_parameters_from_cfg(cfg: DictConfig) -> LearningParameters:
     """
     Utility method to parse learning parameters from a configuration dictionary
 
     Args:
-        cfg (dict[str, Any]): configuration dictionary
+        cfg (DictConfig): configuration dictionary
 
     Returns:
         LearningParameters: Learning parameters object
     """
-    learning_params = cfg["learn"]
+    learning_params = cfg.learning
     return LearningParameters(
         model_name=cfg["model_name"],
         learning_rate=learning_params["learning_rate"],

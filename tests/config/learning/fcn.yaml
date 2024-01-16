@@ -1,0 +1,14 @@
+defaults:
+  - scheduler: "none"
+
+learning_rate: 0.001
+weight_decay: 0.02
+batch_size: 128
+epochs: 20
+beta_ema: 0.9999
+gradient_clip: 0.1
+eval_split_factor: 0.05
+amp: False
+num_devices: 0
+num_workers: 4
+save_path: "saved/"

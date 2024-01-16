@@ -1,0 +1,35 @@
+loss:
+  aggregator:
+    type: weighted_sum
+  components:
+    ce_loss:
+      type: basic_cls
+      weight: 1.0
+      base_loss: ce
+    correct_ratio_metric:
+      type: percent_correct
+model:
+  hidden_size: 64
+  num_layers: 7
+  activation_function: gelu
+learning:
+  scheduler:
+    type: none
+    loss_monitor: step
+    interval: training_total_loss
+    frequency: 1
+  learning_rate: 0.001
+  weight_decay: 0.02
+  batch_size: 128
+  epochs: 20
+  beta_ema: 0.9999
+  gradient_clip: 0.1
+  eval_split_factor: 0.05
+  amp: false
+  num_devices: 0
+  num_workers: 4
+  save_path: saved/
+data_cfg:
+  dataset_path: data
+  type: mnist
+model_name: mnist_fcn

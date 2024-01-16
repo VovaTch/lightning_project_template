@@ -1,8 +1,8 @@
 from enum import Enum, auto
 from typing import Any, Callable
 
-import pytorch_lightning as pl
-from torch.utils.data import Dataset
+import lightning as L
+from omegaconf import DictConfig
 
 
 class Stage(Enum):
@@ -19,5 +19,5 @@ class Stage(Enum):
     TEST = auto()
 
 
-DataModuleBuilder = Callable[[dict[str, Any]], type[pl.LightningDataModule]]
+DataModuleBuilder = Callable[[DictConfig], type[L.LightningDataModule]]
 DATA_MODULES: dict[str, DataModuleBuilder] = {}
