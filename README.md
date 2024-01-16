@@ -1,6 +1,10 @@
 # Lightning Project Template
 
-This project template implements a simple MNIST classification code with a fully connected network.
+This project template implements a simple MNIST classification code with a fully connected network. 
+Uses:
+* Lightning
+* Hydra
+* Fire
 
 ## Install
 

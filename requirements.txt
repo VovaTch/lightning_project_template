@@ -6,4 +6,4 @@ pyyaml
 hydra-core
 matplotlib
 tensorboard
-fire
+ipykernel
