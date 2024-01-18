@@ -4,7 +4,6 @@ This project template implements a simple MNIST classification code with a fully
 Uses:
 * Lightning
 * Hydra
-* Fire
 
 ## Install
 
