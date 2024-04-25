@@ -1,7 +1,10 @@
 defaults:
+  - _self_
   - loss: cls
   - model: fcn
   - learning: fcn
-  - data_cfg: mnist
+  - data: mnist
 
+project_name: Basic_Template
 model_name: mnist_fcn
+resume: null

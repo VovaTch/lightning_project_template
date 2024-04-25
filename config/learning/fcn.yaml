@@ -7,8 +7,10 @@ batch_size: 128
 epochs: 20
 beta_ema: 0.9999
 gradient_clip: 0.1
-eval_split_factor: 0.05
+val_split: 0.05
+test_split: 0.01
 amp: False
-num_devices: 0
+devices: auto
 num_workers: 4
 save_path: "saved/"
+trigger_loss: 0.000001

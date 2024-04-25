@@ -1,16 +1,15 @@
-from __future__ import annotations
 from dataclasses import dataclass
-from typing import Any, Callable, Protocol
-from omegaconf import DictConfig
+from typing import Any, Callable
+from typing_extensions import Self
 
+from omegaconf import DictConfig
 import torch
 import torch.nn as nn
 from torchvision.ops import sigmoid_focal_loss
+import utils.transform_func as transform_func
 
-from utils.others import register_builder
 
-
-LOSS_MODULES: dict[str, nn.Module] = {
+LOSS_FUNCTIONS = {
     "mse": nn.MSELoss(),
     "l1": nn.L1Loss(),
     "huber": nn.SmoothL1Loss(),
@@ -21,47 +20,18 @@ LOSS_MODULES: dict[str, nn.Module] = {
 
 
 @dataclass
-class LossComponent(Protocol):
-    """
-    Loss component object protocol
-
-    Fields:
-        name (str): loss name
-        weight (float): loss relative weight for computation (e.g. weighted sum)
-        base_loss (nn.Module): base loss module specific for the loss
-    """
-
-    name: str
-    weight: float
-    base_loss: nn.Module
-    differentiable: bool
-
-    def __call__(
-        self, estimation: dict[str, torch.Tensor], target: dict[str, torch.Tensor]
-    ) -> torch.Tensor:
-        """
-        Call method for outputting the loss
-
-        Args:
-            estimation (dict[str, torch.Tensor]): Network estimation
-            target (dict[str, torch.Tensor]): Ground truth reference
-
-        Returns:
-            torch.Tensor: loss
-        """
-        ...
-
-
-LossComponentFactory = Callable[[str, DictConfig], LossComponent]
-
-COMPONENT_FACTORIES: dict[str, LossComponentFactory] = {}
-
-
-# >>>>>>>>>>>>>> ACTUAL COMPONENT IMPLEMENTATION
-@dataclass
 class BasicClassificationLoss:
     """
-    Basic classification loss for classification purposes
+    Basic classification loss, most commonly cross entropy.
+
+    Args:
+        name (str): The name of the loss.
+        weight (float): The weight of the loss.
+        base_loss (nn.Module): The base loss function.
+        differentiable (bool, optional): Whether the loss is differentiable. Defaults to True.
+
+    Returns:
+        torch.Tensor: The computed loss value.
     """
 
     name: str
@@ -70,81 +40,151 @@ class BasicClassificationLoss:
     differentiable: bool = True
 
     def __call__(
-        self, estimation: dict[str, torch.Tensor], target: dict[str, torch.Tensor]
+        self, pred: dict[str, torch.Tensor], target: dict[str, torch.Tensor]
     ) -> torch.Tensor:
         """
-        Call method for outputting the loss
+        Compute the loss.
 
         Args:
-            estimation (dict[str, torch.Tensor]): Network estimation
-            target (dict[str, torch.Tensor]): Ground truth reference
+            pred (dict[str, torch.Tensor]): The predicted values.
+            target (dict[str, torch.Tensor]): The target values.
 
         Returns:
-            torch.Tensor: loss
+            torch.Tensor: The computed loss value.
         """
-        return self.base_loss(estimation["pred_logits"], target["class"])
+        return self.base_loss(pred["logits"], target["class"])
+
+    @classmethod
+    def from_cfg(cls, name: str, cfg: DictConfig) -> Self:
+        """
+        Create an instance of BasicClassificationLoss from a configuration.
+
+        Args:
+            name (str): The name of the loss.
+            cfg (DictConfig): The configuration.
+
+        Returns:
+            BasicClassificationLoss: An instance of BasicClassificationLoss.
+        """
+        return cls(
+            name=name,
+            weight=cfg.get("weight", 1.0),
+            base_loss=LOSS_FUNCTIONS[cfg.get("base_loss", "ce")],
+        )
 
 
-@register_builder(COMPONENT_FACTORIES, "basic_cls")
-def build_classification_loss(
-    name: str, loss_cfg: DictConfig
-) -> BasicClassificationLoss:
+@dataclass
+class ReconstructionLoss:
     """
-    Builds basic classification loss with cross-entropy-loss as default.
+    Reconstruction loss of slices or images most commonly.
 
     Args:
-        name (str): Loss name
-        loss_cfg (DictConfig): Loss configuration
+    *   name (str): The name of the loss.
+    *   weight (float): The weight of the loss.
+    *   base_loss (nn.Module): The base loss function.
+    *   rec_key (str): The key for accessing the reconstruction values in the prediction and target dictionaries.
+    *   transform_func (Callable[[torch.Tensor], torch.Tensor], optional):
+        The transformation function to apply to the reconstruction values. Defaults to lambda x: x.
+    *   differentiable (bool, optional): Whether the loss is differentiable. Defaults to True.
 
     Returns:
-        BasicClassificationLoss: Basic classification loss object
+        torch.Tensor: The computed loss value.
     """
-    loss_module = LOSS_MODULES[loss_cfg.get("base_loss", "ce")]
-    return BasicClassificationLoss(name, loss_cfg.get("weight", 1.0), loss_module)
+
+    name: str
+    weight: float
+    base_loss: nn.Module
+    rec_key: str
+    transform_func: Callable[[torch.Tensor], torch.Tensor] = lambda x: x
+    differentiable: bool = True
+
+    def __call__(
+        self, pred: dict[str, torch.Tensor], target: dict[str, torch.Tensor]
+    ) -> torch.Tensor:
+        """
+        Compute the loss.
+
+        Args:
+            pred (dict[str, torch.Tensor]): The predicted values.
+            target (dict[str, torch.Tensor]): The target values.
+
+        Returns:
+            torch.Tensor: The computed loss value.
+        """
+        return self.base_loss(
+            self.transform_func(pred[self.rec_key]),
+            self.transform_func(target[self.rec_key]),
+        )
+
+    @classmethod
+    def from_cfg(cls, name: str, cfg: DictConfig) -> Self:
+        """
+        Create an instance of ReconstructionLoss from a configuration.
+
+        Args:
+            name (str): The name of the loss.
+            cfg (DictConfig): The configuration.
+
+        Returns:
+            ReconstructionLoss: An instance of ReconstructionLoss.
+        """
+        return cls(
+            name=name,
+            weight=cfg.get("weight", 1.0),
+            base_loss=LOSS_FUNCTIONS[cfg.get("base_loss", "mse")],
+            rec_key=cfg.rec_key,
+            transform_func=getattr(transform_func, cfg.transform_func),
+        )
 
 
 @dataclass
 class PercentCorrect:
     """
-    Basic metric to count the ratio of the correct number of classifications
+    Percent correct metric for classification tasks.
+
+    Args:
+        name (str): The name of the metric.
+        weight (float): The weight of the metric.
+        differentiable (bool, optional): Whether the metric is differentiable. Defaults to False.
+
+    Returns:
+        torch.Tensor: The computed metric value.
     """
 
     name: str
     weight: float
-    base_loss: nn.Module | None = None
     differentiable: bool = False
 
     def __call__(
-        self, estimation: dict[str, torch.Tensor], target: dict[str, torch.Tensor]
+        self, pred: dict[str, torch.Tensor], target: dict[str, torch.Tensor]
     ) -> torch.Tensor:
         """
-        Call method for outputting the loss
+        Compute the metric.
 
         Args:
-            estimation (dict[str, torch.Tensor]): Network estimation
-            target (dict[str, torch.Tensor]): Ground truth reference
+            pred (dict[str, torch.Tensor]): The predicted values.
+            target (dict[str, torch.Tensor]): The target values.
 
         Returns:
-            torch.Tensor: loss
+            torch.Tensor: The computed metric value.
         """
-        pred_logits_argmax = torch.argmax(estimation["pred_logits"], dim=1)
+        pred_logits_argmax = torch.argmax(pred["logits"], dim=1)
         correct = torch.sum(pred_logits_argmax == target["class"])
         return correct / torch.numel(pred_logits_argmax)
 
+    @classmethod
+    def from_cfg(cls, name: str, cfg: DictConfig) -> Self:
+        """
+        Create an instance of PercentCorrect from a configuration.
 
-@register_builder(COMPONENT_FACTORIES, "percent_correct")
-def build_percent_correct_metric(name: str, loss_cfg: dict[str, Any]) -> PercentCorrect:
-    """
-    Builds the percent correct metric; this metric does not account into the grad operation
+        Args:
+            name (str): The name of the metric.
+            cfg (DictConfig): The configuration.
 
-    Args:
-        name (str): Loss name
-        loss_cfg (dict[str, Any]): Loss configuration
-
-    Returns:
-        PercentCorrect: Percent correct loss object
-    """
-    return PercentCorrect(name, 1.0, None)
-
-
-# >>>>>>>>>>>>>>>>>>>>>>>>>>> END OF ACTUAL COMPONENT IMPLEMENTATION
+        Returns:
+            PercentCorrect: An instance of PercentCorrect.
+        """
+        return cls(
+            name=name,
+            weight=cfg.get("weight", 1.0),
+        )

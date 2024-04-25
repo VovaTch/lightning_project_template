@@ -160,7 +160,7 @@ cython_debug/
 #.idea/
 
 # Project-specific
-data/
+/data/
 saved/
 Pipfile
 weights/

@@ -1,3 +1,0 @@
-hidden_size: 64
-num_layers: 7
-activation_function: "gelu"

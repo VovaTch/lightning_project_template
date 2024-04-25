@@ -1,106 +1,136 @@
 from dataclasses import dataclass
-from typing import Any, Protocol
-from omegaconf import DictConfig
+from typing import Iterable, Protocol
+from typing_extensions import Self
 
+from omegaconf import DictConfig
 import torch
 
-from utils.others import RegisterClass
-
-from .components import LossComponent, COMPONENT_FACTORIES
+import loss.components as components
 
 
 @dataclass
 class LossOutput:
     """
-    Loss output object that contains individual components named, and the total loss from the aggregator.
+    Represents the output of a loss calculation.
 
-    Fields:
-        *   total (Tensor): Total loss from the aggregator
-        *   individuals (dict[str, Tensor]): Individual loss component values.
+    Attributes:
+        total (torch.Tensor): The total loss value.
+        individual (dict[str, torch.Tensor]): A dictionary containing individual loss values for each component.
     """
 
     total: torch.Tensor
-    individuals: dict[str, torch.Tensor]
+    individual: dict[str, torch.Tensor]
 
 
-@dataclass
-class LossAggregator(Protocol):
+class LossComponent(Protocol):
     """
-    Loss aggregator protocol, uses a math operation on component losses to compute a total loss. For example, weighted sum.
+    Represents a loss component used for aggregating losses in a model.
+
+    Attributes:
+        name (str): The name of the loss component.
+        differentiable (bool): Indicates whether the loss component is differentiable.
+        weight (float): The weight of the loss component.
     """
 
-    components: list[LossComponent]
+    name: str
+    differentiable: bool
+    weight: float
 
     def __call__(
-        self,
-        estimation: dict[str, torch.Tensor],
-        target: dict[str, torch.Tensor],
-    ) -> LossOutput:
-        """Call method for loss aggregation
+        self, pred: dict[str, torch.Tensor], target: dict[str, torch.Tensor]
+    ) -> torch.Tensor:
+        """
+        Calculate the loss aggregation.
 
         Args:
-            estimation (dict[str, torch.Tensor]): Network estimation dictionary
-            target (dict[str, torch.Tensor]): Target dictionary
+            pred (dict[str, torch.Tensor]): The predicted values.
+            target (dict[str, torch.Tensor]): The target values.
 
         Returns:
-            LossOutput: LossOutput object representing the total loss and the individual parts
+            torch.Tensor: The aggregated loss.
+        """
+        ...
+
+    @classmethod
+    def from_cfg(cls, name: str, cfg: DictConfig) -> Self:
+        """
+        Create an instance of the aggregator from the configuration.
+
+        Args:
+            name (str): The name of the aggregator.
+            cfg (DictConfig): The configuration for the aggregator.
+
+        Returns:
+            Self: An instance of the aggregator.
         """
         ...
 
 
-AGGREGATORS: dict[str, type[LossAggregator]] = {}
-
-
-@RegisterClass(AGGREGATORS, "weighted_sum")
-@dataclass
 class WeightedSumAggregator:
     """
-    Weighted sum loss component
+    Aggregator that computes the weighted sum of multiple loss components.
+
+    Args:
+        components (Iterable[LossComponent]): A collection of loss components.
+
+    Returns:
+        LossOutput: The aggregated loss output.
+
+    Example:
+    ```python
+    aggregator = WeightedSumAggregator([component1, component2])
+    loss_output = aggregator(pred, target)
+    ```
     """
 
-    components: list[LossComponent]
-
-    def __call__(
-        self, estimation: dict[str, torch.Tensor], target: dict[str, torch.Tensor]
-    ) -> LossOutput:
+    def __init__(self, components: Iterable[LossComponent]) -> None:
         """
-        Forward method to compute the weighted sum
+        Initializes the Aggregator object.
 
         Args:
-            estimation (dict[str, torch.Tensor]): Network estimation
-            target (dict[str, torch.Tensor]): Ground truth reference
+            components (Iterable[LossComponent]): An iterable of LossComponent objects.
+        """
+        self.components = components
+
+    def __call__(
+        self, pred: dict[str, torch.Tensor], target: dict[str, torch.Tensor]
+    ) -> LossOutput:
+        """
+        Calculates the aggregated loss based on the predictions and targets.
+
+        Args:
+            pred (dict[str, torch.Tensor]): A dictionary containing the predicted values.
+            target (dict[str, torch.Tensor]): A dictionary containing the target values.
 
         Returns:
-            LossOutput: Loss output object with total loss and individual losses
+            LossOutput: An instance of the LossOutput class representing the aggregated loss.
         """
         loss = LossOutput(torch.tensor(0.0), {})
 
         for component in self.components:
-            ind_loss = component(estimation, target)
+            ind_loss = component(pred, target)
             if component.differentiable:
                 loss.total = loss.total.to(ind_loss.device)
                 loss.total += component.weight * ind_loss
-            loss.individuals[component.name] = ind_loss
+            loss.individual[component.name] = ind_loss
 
         return loss
 
+    @classmethod
+    def from_cfg(cls, cfg: DictConfig) -> Self:
+        """
+        Create an instance of the Aggregator class from a configuration dictionary.
 
-def build_loss_aggregator(cfg: DictConfig) -> LossAggregator:
-    """
-    Builds a loss aggregator object
+        Args:
+            cfg (DictConfig): The configuration dictionary.
 
-    Args:
-        cfg (DictConfig): Configuration dictionary
+        Returns:
+            Self: An instance of the Aggregator class.
 
-    Returns:
-        LossAggregator: Loss aggregation object
-    """
-    aggregator_type = cfg.loss.aggregator.type
-    components = []
-    for component_key in cfg.loss.components:
-        component_cfg = cfg.loss.components[component_key]
-        component_type = component_cfg["type"]
-        component = COMPONENT_FACTORIES[component_type](component_key, component_cfg)
-        components.append(component)
-
-    return AGGREGATORS[aggregator_type](components)
+        """
+        return cls(
+            [
+                getattr(components, loss_cfg["type"]).from_cfg(name, loss_cfg)
+                for name, loss_cfg in cfg.loss.components.items()
+            ]
+        )

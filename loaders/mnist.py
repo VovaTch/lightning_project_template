@@ -1,16 +1,15 @@
 from __future__ import annotations
 from typing import Any
+from typing_extensions import Self
 from omegaconf import DictConfig
 
 from torch.utils.data import Dataset, DataLoader
 from torchvision import datasets
 import torchvision.transforms.functional as TF
 import lightning as L
-from lightning.pytorch.utilities.types import EVAL_DATALOADERS, TRAIN_DATALOADERS
 
-from utils.containers import LearningParameters, parse_learning_parameters_from_cfg
-from utils.others import register_builder
-from .base import Stage, DATA_MODULES
+from utils.learning import LearningParameters
+from .base import Stage
 
 
 class MnistDataset(Dataset):
@@ -134,25 +133,24 @@ class SeparatedSetModule(L.LightningDataModule):
             num_workers=self.learning_params.num_workers,
         )
 
+    @classmethod
+    def from_cfg(cls, cfg: DictConfig) -> Self:
+        """
+        Build and return a `SeparatedSetModule` for managing MNIST datasets based on the provided configuration.
 
-@register_builder(DATA_MODULES, "mnist")
-def build_mnist_data_module(cfg: DictConfig) -> SeparatedSetModule:
-    """
-    Build and return a `SeparatedSetModule` for managing MNIST datasets based on the provided configuration.
+        Args:
+            cfg (DictConfig): A dictionary containing configuration parameters for building the data module.
 
-    Args:
-        cfg (DictConfig): A dictionary containing configuration parameters for building the data module.
+        Returns:
+            SeparatedSetModule: A `SeparatedSetModule` instance for managing the MNIST datasets during training, validation, and testing.
 
-    Returns:
-        SeparatedSetModule: A `SeparatedSetModule` instance for managing the MNIST datasets during training, validation, and testing.
-
-    Note:
-    *   This function is a builder for creating a `SeparatedSetModule` tailored for MNIST dataset management.
-        It parses learning parameters from the configuration, sets up train and validation datasets,
-        and returns a data module ready for use in a PyTorch Lightning project.
-    """
-    learning_params = parse_learning_parameters_from_cfg(cfg)
-    dataset_path = cfg.data_cfg.dataset_path
-    train_dataset = MnistDataset(Stage.TRAIN, dataset_path)
-    val_dataset = MnistDataset(Stage.VALIDATION, dataset_path)
-    return SeparatedSetModule(learning_params, train_dataset, val_dataset)
+        Note:
+        *   This function is a builder for creating a `SeparatedSetModule` tailored for MNIST dataset management.
+            It parses learning parameters from the configuration, sets up train and validation datasets,
+            and returns a data module ready for use in a PyTorch Lightning project.
+        """
+        learning_params = LearningParameters.from_cfg(cfg.model_name, cfg)
+        dataset_path = cfg.data.params.data_path
+        train_dataset = MnistDataset(Stage.TRAIN, dataset_path)
+        val_dataset = MnistDataset(Stage.VALIDATION, dataset_path)
+        return cls(learning_params, train_dataset, val_dataset)
