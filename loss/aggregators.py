@@ -1,11 +1,7 @@
 from dataclasses import dataclass
 from typing import Iterable, Protocol
-from typing_extensions import Self
 
-from omegaconf import DictConfig
 import torch
-
-import loss.components as components
 
 
 @dataclass
@@ -51,20 +47,6 @@ class LossComponent(Protocol):
         """
         ...
 
-    @classmethod
-    def from_cfg(cls, name: str, cfg: DictConfig) -> Self:
-        """
-        Create an instance of the aggregator from the configuration.
-
-        Args:
-            name (str): The name of the aggregator.
-            cfg (DictConfig): The configuration for the aggregator.
-
-        Returns:
-            Self: An instance of the aggregator.
-        """
-        ...
-
 
 class WeightedSumAggregator:
     """
@@ -77,6 +59,7 @@ class WeightedSumAggregator:
         LossOutput: The aggregated loss output.
 
     Example:
+
     ```python
     aggregator = WeightedSumAggregator([component1, component2])
     loss_output = aggregator(pred, target)
@@ -115,22 +98,3 @@ class WeightedSumAggregator:
             loss.individual[component.name] = ind_loss
 
         return loss
-
-    @classmethod
-    def from_cfg(cls, cfg: DictConfig) -> Self:
-        """
-        Create an instance of the Aggregator class from a configuration dictionary.
-
-        Args:
-            cfg (DictConfig): The configuration dictionary.
-
-        Returns:
-            Self: An instance of the Aggregator class.
-
-        """
-        return cls(
-            [
-                getattr(components, loss_cfg["type"]).from_cfg(name, loss_cfg)
-                for name, loss_cfg in cfg.loss.components.items()
-            ]
-        )

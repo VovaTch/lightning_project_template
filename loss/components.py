@@ -1,22 +1,8 @@
 from dataclasses import dataclass
-from typing import Any, Callable
-from typing_extensions import Self
+from typing import Callable
 
-from omegaconf import DictConfig
 import torch
 import torch.nn as nn
-from torchvision.ops import sigmoid_focal_loss
-import utils.transform_func as transform_func
-
-
-LOSS_FUNCTIONS = {
-    "mse": nn.MSELoss(),
-    "l1": nn.L1Loss(),
-    "huber": nn.SmoothL1Loss(),
-    "bce": nn.BCEWithLogitsLoss(),
-    "ce": nn.CrossEntropyLoss(),
-    "focal": sigmoid_focal_loss,  # type: ignore
-}
 
 
 @dataclass
@@ -53,24 +39,6 @@ class BasicClassificationLoss:
             torch.Tensor: The computed loss value.
         """
         return self.base_loss(pred["logits"], target["class"])
-
-    @classmethod
-    def from_cfg(cls, name: str, cfg: DictConfig) -> Self:
-        """
-        Create an instance of BasicClassificationLoss from a configuration.
-
-        Args:
-            name (str): The name of the loss.
-            cfg (DictConfig): The configuration.
-
-        Returns:
-            BasicClassificationLoss: An instance of BasicClassificationLoss.
-        """
-        return cls(
-            name=name,
-            weight=cfg.get("weight", 1.0),
-            base_loss=LOSS_FUNCTIONS[cfg.get("base_loss", "ce")],
-        )
 
 
 @dataclass
@@ -116,26 +84,6 @@ class ReconstructionLoss:
             self.transform_func(target[self.rec_key]),
         )
 
-    @classmethod
-    def from_cfg(cls, name: str, cfg: DictConfig) -> Self:
-        """
-        Create an instance of ReconstructionLoss from a configuration.
-
-        Args:
-            name (str): The name of the loss.
-            cfg (DictConfig): The configuration.
-
-        Returns:
-            ReconstructionLoss: An instance of ReconstructionLoss.
-        """
-        return cls(
-            name=name,
-            weight=cfg.get("weight", 1.0),
-            base_loss=LOSS_FUNCTIONS[cfg.get("base_loss", "mse")],
-            rec_key=cfg.rec_key,
-            transform_func=getattr(transform_func, cfg.transform_func),
-        )
-
 
 @dataclass
 class PercentCorrect:
@@ -171,20 +119,3 @@ class PercentCorrect:
         pred_logits_argmax = torch.argmax(pred["logits"], dim=1)
         correct = torch.sum(pred_logits_argmax == target["class"])
         return correct / torch.numel(pred_logits_argmax)
-
-    @classmethod
-    def from_cfg(cls, name: str, cfg: DictConfig) -> Self:
-        """
-        Create an instance of PercentCorrect from a configuration.
-
-        Args:
-            name (str): The name of the metric.
-            cfg (DictConfig): The configuration.
-
-        Returns:
-            PercentCorrect: An instance of PercentCorrect.
-        """
-        return cls(
-            name=name,
-            weight=cfg.get("weight", 1.0),
-        )

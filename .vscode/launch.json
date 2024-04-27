@@ -6,7 +6,7 @@
     "configurations": [
         {
             "name": "Python: Current File",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
@@ -14,9 +14,25 @@
         },
         {
             "name": "Python: Pull Weights",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "module": "scripts.pull_last_weights",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "Python: Train",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "scripts.train",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
+            "name": "Python: Test",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "scripts.test",
             "console": "integratedTerminal",
             "justMyCode": true
         }

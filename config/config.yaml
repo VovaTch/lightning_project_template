@@ -1,10 +1,14 @@
 defaults:
   - _self_
-  - loss: cls
+  - data: standard_module
+  - learning: standard
+  - optimizer: adamw_standard
+  - scheduler: none
+  - loss: mnist
   - model: fcn
-  - learning: fcn
-  - data: mnist
+  - module: mnist_cls
 
-project_name: Basic_Template
+
+project_name: LightningTemplate
 model_name: mnist_fcn
 resume: null

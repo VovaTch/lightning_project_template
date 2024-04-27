@@ -1,4 +1,0 @@
-type: "none"  # Options: "none", "step", "cosine", etc.
-loss_monitor: "training total loss"
-interval: step
-frequency: 1

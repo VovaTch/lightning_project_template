@@ -1,10 +1,11 @@
+from json import load
 import os
 import hydra
 from omegaconf import DictConfig
+import torch
 
-import loaders
-import models
-from utils.learning import LearningParameters, get_trainer
+from models.base import BaseLightningModule, load_inner_model_state_dict
+from utils.learning import get_trainer
 
 
 @hydra.main(version_base=None, config_path="../config", config_name="config")
@@ -14,16 +15,17 @@ def main(cfg: DictConfig) -> None:
     weights_path = os.path.join(cfg.learning.save_path, cfg.model_name + ".ckpt")
 
     # Get loader
-    data_module = getattr(loaders, cfg.data.type).from_cfg(cfg)
+    data_module = hydra.utils.instantiate(cfg.data)
 
-    # Get model
-    module = (
-        getattr(models, cfg.model.module).from_cfg(cfg, weights=weights_path).eval()
-    )
+    # Get lightning module
+    module: BaseLightningModule = hydra.utils.instantiate(
+        cfg.module, _convert_="partial"
+    ).to("cuda")
+    module = load_inner_model_state_dict(module, weights_path)
 
     # Get trainer
-    learning_params = LearningParameters.from_cfg(cfg.model_name, cfg)
-    trainer = get_trainer(learning_params)
+    learning_params = hydra.utils.instantiate(cfg.learning)
+    trainer = get_trainer(learning_params)  # type: ignore
 
     # Fit model
     trainer.test(module, data_module)
