@@ -1,6 +1,5 @@
-type: FCN
-module: MnistClassifierModule
-params:
-  hidden_size: 64
-  num_layers: 7
-  activation_function: "gelu"
+_target_: models.FCN
+hidden_size: 256
+num_layers: 2
+activation_function:
+  _target_: torch.nn.LeakyReLU

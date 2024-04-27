@@ -25,19 +25,22 @@ class LossAggregator(Protocol):
 
     This class defines the protocol for a loss aggregator, which is responsible for aggregating
     the losses calculated by the model.
-
-    Args:
-        pred (dict[str, torch.Tensor]): The predicted values from the model.
-        target (dict[str, torch.Tensor]): The target values.
-
-    Returns:
-        LossOutput: The aggregated loss output.
-
     """
 
     def __call__(
         self, pred: dict[str, torch.Tensor], target: dict[str, torch.Tensor]
-    ) -> LossOutput: ...
+    ) -> LossOutput:
+        """
+        Perform the forward pass of the loss aggregator.
+
+        Args:
+            pred (dict[str, torch.Tensor]): The predicted output of the model.
+            target (dict[str, torch.Tensor]): The target output.
+
+        Returns:
+            LossOutput: The computed loss output.
+        """
+        ...
 
 
 class BaseLightningModule(L.LightningModule):
@@ -97,11 +100,11 @@ class BaseLightningModule(L.LightningModule):
         Raises:
             AttributeError: If the specified optimizer type is not supported.
         """
-        if optimizer_cfg is not None and optimizer_cfg["type"] != "none":
+        if optimizer_cfg is not None and optimizer_cfg["target"] != "none":
             filtered_optimizer_cfg = {
-                key: value for key, value in optimizer_cfg.items() if key != "type"
+                key: value for key, value in optimizer_cfg.items() if key != "target"
             }
-            optimizer = getattr(torch.optim, optimizer_cfg["type"])(
+            optimizer = getattr(torch.optim, optimizer_cfg["target"])(
                 self.parameters(), **filtered_optimizer_cfg
             )
         else:
@@ -127,11 +130,11 @@ class BaseLightningModule(L.LightningModule):
             or None if scheduler_cfg is None.
         """
         # Build scheduler
-        if scheduler_cfg is not None and scheduler_cfg["type"] != "none":
+        if scheduler_cfg is not None and scheduler_cfg["target"] != "none":
             filtered_schedulers_cfg = {
-                key: value for key, value in scheduler_cfg.items() if key != "type"
+                key: value for key, value in scheduler_cfg.items() if key != "target"
             }
-            scheduler = getattr(torch.optim.lr_scheduler, scheduler_cfg["type"])(
+            scheduler = getattr(torch.optim.lr_scheduler, scheduler_cfg["target"])(
                 self.optimizer, **filtered_schedulers_cfg
             )
         else:
@@ -274,18 +277,11 @@ class BaseLightningModule(L.LightningModule):
         """
         ...
 
-    @classmethod
-    @abstractmethod
-    def from_cfg(cls, cfg: DictConfig, weights: str | None = None) -> Self:
-        """
-        Create an instance of the class from a configuration dictionary.
 
-        Args:
-            cfg (DictConfig): The configuration dictionary.
-            weights (str | None): Path to the weights file to load. Defaults to None.
-
-        Returns:
-            Self: An instance of the class.
-
-        """
-        ...
+def load_inner_model_state_dict(
+    module: BaseLightningModule, checkpoint_path: str
+) -> BaseLightningModule:
+    checkpoint = torch.load(checkpoint_path)
+    state_dict = checkpoint["state_dict"]
+    module.load_state_dict(state_dict)
+    return module

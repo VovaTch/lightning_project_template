@@ -59,26 +59,6 @@ class FCN(nn.Module):
         """
         return self.network(x.flatten(start_dim=1))
 
-    @classmethod
-    def from_cfg(cls, cfg: DictConfig) -> Self:
-        """
-        Create an instance of the class using the provided configuration.
-
-        Args:
-            cfg (DictConfig): The configuration dictionary.
-
-        Returns:
-            Self: An instance of the class.
-
-        """
-        return cls(
-            hidden_size=cfg.model.params.hidden_size,
-            num_layers=cfg.model.params.num_layers,
-            activation_function=ACTIVATION_FUNCTIONS[
-                cfg.model.params.activation_function
-            ],
-        )
-
 
 def fcn(model_name: str, weights_path: str | None = None) -> FCN:
     """

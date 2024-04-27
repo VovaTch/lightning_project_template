@@ -1,9 +1,9 @@
 from dataclasses import dataclass
+from typing import Any
 import warnings
-from typing_extensions import Self
+from typing import TYPE_CHECKING
 
 import torch
-from omegaconf import DictConfig
 import lightning as L
 from lightning.pytorch.callbacks import (
     LearningRateMonitor,
@@ -23,7 +23,7 @@ class LearningParameters:
     excluding the optimizer and the scheduler, which are handled separately.
     """
 
-    project_name: str
+    model_name: str
     learning_rate: float
     weight_decay: float
     batch_size: int
@@ -34,43 +34,12 @@ class LearningParameters:
     amp: bool
     val_split: float
     test_split: float
-    devices: str | int | list[int]
+    devices: Any
     num_workers: int
     loss_monitor: str
     trigger_loss: float
     interval: str
     frequency: int
-
-    @classmethod
-    def from_cfg(cls, exp_name: str, cfg: DictConfig) -> Self:
-        """
-        Create an instance of the LearningParameters class from a configuration dictionary.
-
-        Args:
-            cfg (DictConfig): The configuration dictionary containing the parameters.
-
-        Returns:
-            Self: An instance of the LearningParameters class.
-        """
-        return cls(
-            project_name=exp_name,
-            learning_rate=cfg.learning.learning_rate,
-            weight_decay=cfg.learning.weight_decay,
-            batch_size=cfg.learning.batch_size,
-            epochs=cfg.learning.epochs,
-            beta_ema=cfg.learning.beta_ema,
-            gradient_clip=cfg.learning.gradient_clip,
-            save_path=cfg.learning.save_path,
-            amp=cfg.learning.amp,
-            val_split=cfg.learning.val_split,
-            test_split=cfg.learning.test_split,
-            devices=cfg.learning.devices,
-            num_workers=cfg.learning.num_workers,
-            loss_monitor=cfg.learning.scheduler.loss_monitor,
-            trigger_loss=cfg.learning.trigger_loss,
-            interval=cfg.learning.scheduler.interval,
-            frequency=cfg.learning.scheduler.frequency,
-        )
 
 
 def get_trainer(learning_parameters: LearningParameters) -> L.Trainer:
@@ -100,13 +69,13 @@ def get_trainer(learning_parameters: LearningParameters) -> L.Trainer:
     ema = EMA(learning_parameters.beta_ema)
     learning_rate_monitor = LearningRateMonitor(logging_interval="step")
     tensorboard_logger = TensorBoardLogger(
-        save_dir=save_folder, name=learning_parameters.project_name
+        save_dir=save_folder, name=learning_parameters.model_name
     )
     loggers: list[Logger] = [tensorboard_logger]
 
     model_checkpoint_callback = ModelCheckpoint(
         dirpath=save_folder,
-        filename=learning_parameters.project_name,
+        filename=learning_parameters.model_name,
         save_weights_only=True,
         save_top_k=1,
         monitor=learning_parameters.loss_monitor,

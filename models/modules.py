@@ -1,14 +1,10 @@
 from typing import Any
-from omegaconf import DictConfig
-from typing_extensions import Self
 
 import torch
 import torch.nn as nn
 
 from loss.aggregators import LossOutput
-import loss.aggregators as loss_aggregators
 from models.models import FCN
-import models.models as models
 from utils.learning import LearningParameters
 
 from .base import BaseLightningModule, LossAggregator
@@ -94,38 +90,3 @@ class MnistClassifierModule(BaseLightningModule):
             self.log(log_name, loss.individual[name])
         self.log(f"{phase} total loss", loss.total, prog_bar=True)
         return loss.total
-
-    @classmethod
-    def from_cfg(cls, cfg: DictConfig, weights: str | None = None) -> Self:
-        """
-        Creates an instance of the MNIST classifier module from a configuration.
-
-        Args:
-            cfg (DictConfig): The configuration object.
-            weights (str | None, optional): Path to the pre-trained weights. Defaults to None.
-
-        Returns:
-            Self: An instance of the MNIST classifier module.
-        """
-        model = getattr(models, cfg.model.type).from_cfg(cfg)
-        loss_aggregator = (
-            getattr(loss_aggregators, cfg.loss.aggregator.type).from_cfg(cfg)
-            if cfg.loss.aggregator.type is not None
-            else None
-        )
-        learning_params = LearningParameters.from_cfg(cfg.model_name, cfg)
-        scheduler_cfg = cfg.learning.scheduler if "scheduler" in cfg.learning else None
-        optimizer_cfg = cfg.learning.optimizer if "optimizer" in cfg.learning else None
-
-        kwargs = {
-            "model": model,
-            "learning_params": learning_params,
-            "loss_aggregator": loss_aggregator,
-            "optimizer_cfg": optimizer_cfg,
-            "scheduler_cfg": scheduler_cfg,
-        }
-
-        if weights is not None:
-            return cls.load_from_checkpoint(weights, **kwargs)
-        else:
-            return cls(**kwargs)
