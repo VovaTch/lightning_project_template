@@ -3,7 +3,7 @@ from loss.aggregators import WeightedSumAggregator
 
 
 def test_weighted_sum_aggregator(
-    weighted_sum_aggregator: WeightedSumAggregator,
+    loss_aggregator: WeightedSumAggregator,
 ) -> None:
 
     # Create some dummy predictions and targets
@@ -11,7 +11,7 @@ def test_weighted_sum_aggregator(
     target = {"target1": torch.tensor(1.0), "target2": torch.tensor(0.0)}
 
     # Calculate the aggregated loss
-    loss_output = weighted_sum_aggregator(pred, target)
+    loss_output = loss_aggregator(pred, target)
 
     # Assert the expected values
     assert torch.isclose(loss_output.total, torch.tensor(0.7)).item()
