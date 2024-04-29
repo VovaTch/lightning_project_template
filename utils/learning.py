@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 from typing import Any
 import warnings
-from typing import TYPE_CHECKING
 
 import torch
 import lightning as L
@@ -24,22 +23,22 @@ class LearningParameters:
     """
 
     model_name: str
-    learning_rate: float
-    weight_decay: float
-    batch_size: int
-    epochs: int
-    beta_ema: float
-    gradient_clip: float
-    save_path: str
-    amp: bool
-    val_split: float
-    test_split: float
-    devices: Any
-    num_workers: int
-    loss_monitor: str
-    trigger_loss: float
-    interval: str
-    frequency: int
+    learning_rate: float = 0.001
+    weight_decay: float = 0.001
+    batch_size: int = 32
+    epochs: int = 10
+    beta_ema: float = 0.999
+    gradient_clip: float = 0.5
+    save_path: str = "saved"
+    amp: bool = False
+    val_split: float = 0.05
+    test_split: float = 0.01
+    devices: Any = "auto"
+    num_workers: int = 0
+    loss_monitor: str = "validation total loss"
+    trigger_loss: float = 0.0
+    interval: str = "step"
+    frequency: int = 1
 
 
 def get_trainer(learning_parameters: LearningParameters) -> L.Trainer:

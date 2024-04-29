@@ -1,7 +1,7 @@
 from __future__ import annotations
 from abc import abstractmethod
 import os
-from typing import Any, Callable, Protocol
+from typing import Any, Protocol
 import warnings
 
 import lightning as L
