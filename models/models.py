@@ -1,12 +1,8 @@
 from __future__ import annotations
 from typing import Any
-from typing_extensions import Self
 
-from omegaconf import DictConfig
 import torch
 import torch.nn as nn
-
-from models.base import ACTIVATION_FUNCTIONS
 
 
 class FCN(nn.Module):

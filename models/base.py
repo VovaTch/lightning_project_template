@@ -1,22 +1,16 @@
 from __future__ import annotations
 from abc import abstractmethod
+import os
 from typing import Any, Callable, Protocol
-from typing_extensions import Self
+import warnings
 
 import lightning as L
 from lightning.pytorch.utilities.types import STEP_OUTPUT, OptimizerLRScheduler
-from omegaconf import DictConfig
 import torch
 import torch.nn as nn
 from loss.aggregators import LossOutput
 
 from utils.learning import LearningParameters
-
-
-OptimizerBuilder = Callable[[L.LightningModule], torch.optim.Optimizer]
-SchedulerBuilder = Callable[[L.LightningModule], torch.optim.lr_scheduler._LRScheduler]
-
-ACTIVATION_FUNCTIONS: dict[str, nn.Module] = {"relu": nn.ReLU(), "gelu": nn.GELU()}
 
 
 class LossAggregator(Protocol):
@@ -281,7 +275,31 @@ class BaseLightningModule(L.LightningModule):
 def load_inner_model_state_dict(
     module: BaseLightningModule, checkpoint_path: str
 ) -> BaseLightningModule:
-    checkpoint = torch.load(checkpoint_path)
-    state_dict = checkpoint["state_dict"]
-    module.load_state_dict(state_dict)
-    return module
+    """
+    Loads the state dictionary of the inner model from a checkpoint file. If the checkpoint file is not found,
+    or if an error occurs while loading the checkpoint, the model is returned without loading pre-trained weights.
+
+    Args:
+        module (BaseLightningModule): The base lightning module.
+        checkpoint_path (str): The path to the checkpoint file.
+
+    Returns:
+        BaseLightningModule: The base lightning module with the loaded state dictionary.
+
+    """
+    if not os.path.isfile(checkpoint_path):
+        warnings.warn(
+            f"Checkpoint file not found at {checkpoint_path}, skipping weight loading."
+        )
+        return module
+
+    try:
+        checkpoint = torch.load(checkpoint_path)
+        state_dict = checkpoint["state_dict"]
+        module.load_state_dict(state_dict)
+
+    except Exception as e:
+        warnings.warn(f"Error loading checkpoint: {e}, loading model without weights.")
+
+    finally:
+        return module

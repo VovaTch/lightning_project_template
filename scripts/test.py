@@ -1,8 +1,6 @@
-from json import load
 import os
 import hydra
 from omegaconf import DictConfig
-import torch
 
 from models.base import BaseLightningModule, load_inner_model_state_dict
 from utils.learning import get_trainer
