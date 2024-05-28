@@ -1,5 +1,6 @@
 from __future__ import annotations
 from abc import abstractmethod
+import importlib
 import os
 from typing import Any, Protocol
 import warnings
@@ -98,9 +99,12 @@ class BaseLightningModule(L.LightningModule):
             filtered_optimizer_cfg = {
                 key: value for key, value in optimizer_cfg.items() if key != "target"
             }
-            optimizer = getattr(torch.optim, optimizer_cfg["target"])(
-                self.parameters(), **filtered_optimizer_cfg
-            )
+            optimizer = getattr(
+                importlib.import_module(
+                    ".".join(optimizer_cfg["target"].split(".")[:-1])
+                ),
+                optimizer_cfg["target"].split(".")[-1],
+            )(self.parameters(), **filtered_optimizer_cfg)
         else:
             optimizer = torch.optim.AdamW(
                 self.parameters(),
@@ -123,14 +127,16 @@ class BaseLightningModule(L.LightningModule):
             torch.optim.lr_scheduler._LRScheduler | None: The built scheduler object,
             or None if scheduler_cfg is None.
         """
-        # Build scheduler
         if scheduler_cfg is not None and scheduler_cfg["target"] != "none":
             filtered_schedulers_cfg = {
                 key: value for key, value in scheduler_cfg.items() if key != "target"
             }
-            scheduler = getattr(torch.optim.lr_scheduler, scheduler_cfg["target"])(
-                self.optimizer, **filtered_schedulers_cfg
-            )
+            scheduler = getattr(
+                importlib.import_module(
+                    ".".join(scheduler_cfg["target"].split(".")[:-1])
+                ),
+                scheduler_cfg["target"].split(".")[-1],
+            )(self.optimizer, **filtered_schedulers_cfg)
         else:
             scheduler = None
         return scheduler
