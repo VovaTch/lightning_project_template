@@ -1,6 +1,7 @@
 target: none
 
-loss_monitor: "training total loss"
-interval: step
-frequency: 1
-trigger_loss: 0.00000001
+module_params:
+  loss_monitor: "training total loss"
+  interval: step
+  frequency: 1
+  trigger_loss: 0.00000001

@@ -26,6 +26,7 @@ class LearningParameters:
     learning_rate: float = 0.001
     weight_decay: float = 0.001
     batch_size: int = 32
+    grad_accumulation: int = 1
     epochs: int = 10
     beta_ema: float = 0.999
     gradient_clip: float = 0.5
@@ -107,6 +108,7 @@ def get_trainer(learning_parameters: LearningParameters) -> L.Trainer:
         log_every_n_steps=1,
         precision=precision,
         accelerator=accelerator,
+        accumulate_grad_batches=learning_parameters.grad_accumulation,
     )
 
     return trainer

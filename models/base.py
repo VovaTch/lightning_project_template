@@ -129,7 +129,9 @@ class BaseLightningModule(L.LightningModule):
         """
         if scheduler_cfg is not None and scheduler_cfg["target"] != "none":
             filtered_schedulers_cfg = {
-                key: value for key, value in scheduler_cfg.items() if key != "target"
+                key: value
+                for key, value in scheduler_cfg.items()
+                if key not in ["target", "module_params"]
             }
             scheduler = getattr(
                 importlib.import_module(
