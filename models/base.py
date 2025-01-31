@@ -15,27 +15,9 @@ from utils.learning import LearningParameters
 
 
 class LossAggregator(Protocol):
-    """
-    Protocol class for loss aggregator.
-
-    This class defines the protocol for a loss aggregator, which is responsible for aggregating
-    the losses calculated by the model.
-    """
-
     def __call__(
         self, pred: dict[str, torch.Tensor], target: dict[str, torch.Tensor]
-    ) -> LossOutput:
-        """
-        Perform the forward pass of the loss aggregator.
-
-        Args:
-            pred (dict[str, torch.Tensor]): The predicted output of the model.
-            target (dict[str, torch.Tensor]): The target output.
-
-        Returns:
-            LossOutput: The computed loss output.
-        """
-        ...
+    ) -> LossOutput: ...
 
 
 class BaseLightningModule(L.LightningModule):

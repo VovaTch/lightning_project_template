@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Iterable, Protocol
 
@@ -18,37 +19,42 @@ class LossOutput:
     individual: dict[str, torch.Tensor]
 
 
+class LossAggregator(ABC):
+    """
+    Base class for loss aggregator.
+
+    This class defines the protocol for a loss aggregator, which is responsible for aggregating
+    the losses calculated by the model.
+    """
+
+    @abstractmethod
+    def __call__(
+        self, pred: dict[str, torch.Tensor], target: dict[str, torch.Tensor]
+    ) -> LossOutput:
+        """
+        Perform the forward pass of the loss aggregator.
+
+        Args:
+            pred (dict[str, torch.Tensor]): The predicted output of the model.
+            target (dict[str, torch.Tensor]): The target output.
+
+        Returns:
+            LossOutput: The computed loss output.
+        """
+        ...
+
+
 class LossComponent(Protocol):
-    """
-    Represents a loss component used for aggregating losses in a model.
-
-    Attributes:
-        name (str): The name of the loss component.
-        differentiable (bool): Indicates whether the loss component is differentiable.
-        weight (float): The weight of the loss component.
-    """
-
     name: str
     differentiable: bool
     weight: float
 
     def __call__(
         self, pred: dict[str, torch.Tensor], target: dict[str, torch.Tensor]
-    ) -> torch.Tensor:
-        """
-        Calculate the loss aggregation.
-
-        Args:
-            pred (dict[str, torch.Tensor]): The predicted values.
-            target (dict[str, torch.Tensor]): The target values.
-
-        Returns:
-            torch.Tensor: The aggregated loss.
-        """
-        ...
+    ) -> torch.Tensor: ...
 
 
-class WeightedSumAggregator:
+class WeightedSumAggregator(LossAggregator):
     """
     Aggregator that computes the weighted sum of multiple loss components.
 
