@@ -1,9 +1,0 @@
-lightning
-tqdm
-numpy
-pytest
-pyyaml
-hydra-core
-matplotlib
-tensorboard
-ipykernel
