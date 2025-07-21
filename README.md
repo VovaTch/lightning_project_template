@@ -7,8 +7,9 @@ Uses:
 
 ## Install
 
-- Install the Pytorch package corresponding to your CUDA version.
-- Run in the terminal `pip install -r requirements.txt`
+- Have uv installed in the system.
+- Clone this repository.
+- Run `uv init`, then `uv sync`.
 
 ## Run:
 
