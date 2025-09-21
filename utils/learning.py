@@ -40,6 +40,7 @@ class LearningParameters:
     trigger_loss: float = 0.0
     interval: str = "step"
     frequency: int = 1
+    pin_memory: bool = True
 
 
 def get_trainer(learning_parameters: LearningParameters) -> L.Trainer:
