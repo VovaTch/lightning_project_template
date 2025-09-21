@@ -50,6 +50,7 @@ class SeparatedSetModule(L.LightningDataModule):
             batch_size=self.learning_params.batch_size,
             shuffle=True,
             num_workers=self.learning_params.num_workers,
+            pin_memory=self.learning_params.pin_memory,
         )
 
     def val_dataloader(self) -> DataLoader:
@@ -64,6 +65,7 @@ class SeparatedSetModule(L.LightningDataModule):
             batch_size=self.learning_params.batch_size,
             shuffle=False,
             num_workers=self.learning_params.num_workers,
+            pin_memory=self.learning_params.pin_memory,
         )
 
     def test_dataloader(self) -> DataLoader:
@@ -78,4 +80,5 @@ class SeparatedSetModule(L.LightningDataModule):
             batch_size=self.learning_params.batch_size,
             shuffle=False,
             num_workers=self.learning_params.num_workers,
+            pin_memory=self.learning_params.pin_memory,
         )
