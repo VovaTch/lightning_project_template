@@ -44,7 +44,7 @@ class MnistClassifierModule(BaseLightningModule):
             scheduler_cfg,
         )
 
-    def forward(self, x: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
+    def forward(self, input: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
         """
         Forward pass of the MNIST classifier.
 
@@ -54,7 +54,7 @@ class MnistClassifierModule(BaseLightningModule):
         Returns:
             dict[str, torch.Tensor]: Output dictionary containing "logits" tensor.
         """
-        outputs = self.model(x["images"])
+        outputs = self.model(input["images"])
         return {"logits": outputs}
 
     def step(self, batch: dict[str, Any], phase: str) -> torch.Tensor | None:
