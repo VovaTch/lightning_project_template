@@ -7,7 +7,9 @@ from typing import Any, Dict, Iterable
 import lightning as L
 import torch
 from lightning.pytorch import Callback
-from lightning.pytorch.utilities.exceptions import MisconfigurationException  # type: ignore
+from lightning.pytorch.utilities.exceptions import (
+    MisconfigurationException,  # type: ignore
+)
 from lightning.pytorch.utilities.rank_zero import rank_zero_info  # type: ignore
 
 
@@ -238,7 +240,7 @@ class EMAOptimizer(torch.optim.Optimizer):
     def all_parameters(self) -> Iterable[torch.Tensor]:
         return (param for group in self.param_groups for param in group["params"])
 
-    def step(self, closure=None, **kwargs):
+    def step(self, closure=None, **kwargs):  # type: ignore
         self.join()
 
         if self.first_iteration:

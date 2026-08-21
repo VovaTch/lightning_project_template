@@ -1,13 +1,13 @@
+import warnings
 from dataclasses import dataclass
 from typing import Any
-import warnings
 
-import torch
 import lightning as L
+import torch
 from lightning.pytorch.callbacks import (
+    EarlyStopping,
     LearningRateMonitor,
     ModelCheckpoint,
-    EarlyStopping,
     ModelSummary,
 )
 from lightning.pytorch.loggers import Logger, TensorBoardLogger

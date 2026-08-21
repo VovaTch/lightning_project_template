@@ -2,8 +2,8 @@ defaults:
   - _self_
   - data: standard_module
   - learning: standard
-  - optimizer: adamw_standard
-  - scheduler: none
+  - optimizers: adamw_standard
+  - schedulers: none
   - loss: mnist
   - model: fcn
   - module: mnist_cls

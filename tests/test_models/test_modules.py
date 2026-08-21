@@ -25,8 +25,8 @@ def mnist_classifier_module(
     model = FCN()
     learning_params = LearningParameters("testing")
     transforms = nn.Sequential()
-    optimizer_cfg = None
-    scheduler_cfg = None
+    optimizers = None
+    schedulers = None
 
     # Create an instance of the MnistClassifierModule
     module = MnistClassifierModule(
@@ -34,8 +34,8 @@ def mnist_classifier_module(
         learning_params=learning_params,
         transforms=transforms,
         loss_aggregator=cls_loss_aggregator,
-        optimizer_cfg=optimizer_cfg,
-        scheduler_cfg=scheduler_cfg,
+        optimizers=optimizers,
+        schedulers=schedulers,
     )
     return module
 

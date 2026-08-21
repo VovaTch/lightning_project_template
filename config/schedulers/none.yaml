@@ -1,4 +1,4 @@
-target: none
+scheduler: null
 
 module_params:
   loss_monitor: "training total loss"

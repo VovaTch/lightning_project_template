@@ -25,7 +25,7 @@ num_workers: 8
 pin_memory: True
 
 # Scheduler parameters
-loss_monitor: ${scheduler.module_params.loss_monitor}
-interval: ${scheduler.module_params.interval}
-frequency: ${scheduler.module_params.frequency}
-trigger_loss: ${scheduler.module_params.trigger_loss}
+loss_monitor: ${schedulers.module_params.loss_monitor}
+interval: ${schedulers.module_params.interval}
+frequency: ${schedulers.module_params.frequency}
+trigger_loss: ${schedulers.module_params.trigger_loss}

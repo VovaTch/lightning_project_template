@@ -1,0 +1,6 @@
+optimizer:
+  _target_: torch.optim.AdamW
+  _partial_: true
+  weight_decay: ${learning.weight_decay}
+  lr: ${learning.learning_rate}
+  amsgrad: true

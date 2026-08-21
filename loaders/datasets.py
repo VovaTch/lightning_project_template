@@ -1,9 +1,10 @@
 from __future__ import annotations
+
 from typing import Any
 
+import torchvision.transforms.functional as TF
 from torch.utils.data import Dataset
 from torchvision import datasets
-import torchvision.transforms.functional as TF
 
 from .base import Stage
 

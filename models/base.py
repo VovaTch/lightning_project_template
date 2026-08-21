@@ -1,17 +1,22 @@
 from __future__ import annotations
-from abc import abstractmethod
-import importlib
+
 import os
-from typing import Any, Protocol
 import warnings
+from abc import abstractmethod
+from functools import partial
+from logging import Logger
+from typing import Any, Protocol, Sequence
 
 import lightning as L
-from lightning.pytorch.utilities.types import STEP_OUTPUT, OptimizerLRScheduler
 import torch
 import torch.nn as nn
-from loss.aggregators import LossOutput
+from lightning.pytorch.utilities.types import STEP_OUTPUT, OptimizerLRScheduler
+from torch.optim import Optimizer
+from torch.optim.lr_scheduler import LRScheduler
 
+from loss.aggregators import LossOutput
 from utils.learning import LearningParameters
+from utils.logger import LOGGER
 
 
 class LossAggregator(Protocol):
@@ -32,8 +37,9 @@ class BaseLightningModule(L.LightningModule):
         learning_params: LearningParameters,
         transforms: nn.Sequential | None = None,
         loss_aggregator: LossAggregator | None = None,
-        optimizer_cfg: dict[str, Any] | None = None,
-        scheduler_cfg: dict[str, Any] | None = None,
+        optimizers: Sequence[partial[Optimizer]] | partial[Optimizer] | None = None,
+        schedulers: Sequence[partial[LRScheduler]] | partial[LRScheduler] | None = None,
+        logger: Logger = LOGGER,
     ) -> None:
         """
         Initializes the BaseModel class.
@@ -44,10 +50,8 @@ class BaseLightningModule(L.LightningModule):
         *   transforms (nn.Sequential | None, optional): The data transforms to be applied. Defaults to None.
         *   loss_aggregator (LossAggregator | None, optional): The loss aggregator for collecting losses.
             Defaults to None.
-        *   optimizer_cfg (dict[str, Any] | None, optional): The configuration for the optimizer.
-            Defaults to None.
-        *   scheduler_cfg (dict[str, Any] | None, optional): The configuration for the scheduler.
-            Defaults to None.
+        *   optimizer (Optimizer | None, optional): The optimizer to be used. Defaults to None, if so, then AdamW is initialized.
+        *   scheduler (LRScheduler | None, optional): The learning rate scheduler. Defaults to None.
         """
         super().__init__()
 
@@ -56,74 +60,58 @@ class BaseLightningModule(L.LightningModule):
         self.loss_aggregator = loss_aggregator
         self.transforms = transforms
 
-        self.optimizer = self._build_optimizer(optimizer_cfg)
-        self.scheduler = self._build_scheduler(scheduler_cfg)
+        if optimizers is not None and not isinstance(optimizers, Sequence):
+            optimizers = [optimizers]
+        elif optimizers is None:
+            optimizers = [
+                partial(
+                    torch.optim.AdamW,
+                    lr=learning_params.learning_rate,
+                    weight_decay=learning_params.weight_decay,
+                    amsgrad=True,
+                )
+            ]
 
-    def _build_optimizer(
-        self, optimizer_cfg: dict[str, Any] | None
-    ) -> torch.optim.Optimizer:
+        self._optimizers = self._setup_optimizers(optimizers)
+
+        if schedulers is not None and not isinstance(schedulers, Sequence):
+            schedulers = [schedulers]
+
+        self._schedulers = self._setup_schedulers(schedulers)
+        self._logger = logger
+
+    def _setup_optimizers(
+        self, optimizers: Sequence[partial[Optimizer]]
+    ) -> Sequence[Optimizer]:
         """
-        Utility method to build the optimizer.
+        Setups optimizers for the model. For custom logic, implement a custom method.
 
         Args:
-            optimizer_cfg (dict[str, Any] | None): Optimizer configuration dictionary.
-                The dictionary should contain the following keys:
-                - 'type': The type of optimizer to be used (e.g., 'SGD', 'Adam', etc.).
-                - Any additional key-value pairs specific to the chosen optimizer.
+            optimizers (Sequence[partial[Optimizer]]): Optimizers to use.
 
         Returns:
-            torch.optim.Optimizer: The optimizer object.
-
-        Raises:
-            AttributeError: If the specified optimizer type is not supported.
+            Sequence[Optimizer]: Sequence of optimizers
         """
-        if optimizer_cfg is not None and optimizer_cfg["target"] != "none":
-            filtered_optimizer_cfg = {
-                key: value for key, value in optimizer_cfg.items() if key != "target"
-            }
-            optimizer = getattr(
-                importlib.import_module(
-                    ".".join(optimizer_cfg["target"].split(".")[:-1])
-                ),
-                optimizer_cfg["target"].split(".")[-1],
-            )(self.parameters(), **filtered_optimizer_cfg)
-        else:
-            optimizer = torch.optim.AdamW(
-                self.parameters(),
-                lr=self.learning_params.learning_rate,
-                weight_decay=self.learning_params.weight_decay,
-                amsgrad=True,
-            )
-        return optimizer
+        return [optimizer(self.parameters()) for optimizer in optimizers]
 
-    def _build_scheduler(
-        self, scheduler_cfg: dict[str, Any] | None
-    ) -> torch.optim.lr_scheduler._LRScheduler | None:
+    def _setup_schedulers(
+        self, schedulers: Sequence[partial[LRScheduler]] | None
+    ) -> Sequence[LRScheduler] | None:
         """
-        Utility method to build the scheduler.
+        Setups learning rate schedulers for the model. For custom logic, implement a custom method.
 
         Args:
-            scheduler_cfg (dict[str, Any] | None): Scheduler configuration dictionary.
+            schedulers (Sequence[partial[LRScheduler]] | None): Schedulers to use.
 
         Returns:
-            torch.optim.lr_scheduler._LRScheduler | None: The built scheduler object,
-            or None if scheduler_cfg is None.
+            Sequence[LRScheduler] | None: Sequence of schedulers, None if no schedulers defined.
         """
-        if scheduler_cfg is not None and scheduler_cfg["target"] != "none":
-            filtered_schedulers_cfg = {
-                key: value
-                for key, value in scheduler_cfg.items()
-                if key not in ["target", "module_params"]
-            }
-            scheduler = getattr(
-                importlib.import_module(
-                    ".".join(scheduler_cfg["target"].split(".")[:-1])
-                ),
-                scheduler_cfg["target"].split(".")[-1],
-            )(self.optimizer, **filtered_schedulers_cfg)
-        else:
-            scheduler = None
-        return scheduler
+        if schedulers is None:
+            return None
+        return [
+            scheduler(optimizer)
+            for scheduler, optimizer in zip(schedulers, self._optimizers)
+        ]
 
     def configure_optimizers(self) -> OptimizerLRScheduler:
         """
@@ -133,15 +121,17 @@ class BaseLightningModule(L.LightningModule):
         Returns:
             OptimizerLRScheduler: Method output, used internally.
         """
-        if self.scheduler is None:
-            return [self.optimizer]
-
-        scheduler_settings = self._configure_scheduler_settings(
-            self.learning_params.interval,
-            self.learning_params.loss_monitor,
-            self.learning_params.frequency,
+        self._logger.info(
+            "Using default optimizer; to customize, implement a custom 'configure_optimizers'"
         )
-        return [self.optimizer], [scheduler_settings]  # type: ignore
+
+        if self._schedulers is None:
+            return [self._optimizers[0]]
+        else:
+            return {
+                "optimizer": self._optimizers[0],
+                "lr_scheduler": self._schedulers[0],
+            }
 
     def _configure_scheduler_settings(
         self, interval: str, monitor: str, frequency: int
@@ -160,10 +150,10 @@ class BaseLightningModule(L.LightningModule):
         Returns:
             dict[str, Any]: Scheduler configuration dictionary
         """
-        if self.scheduler is None:
+        if self._schedulers is None:
             raise AttributeError("Must include a scheduler")
         return {
-            "scheduler": self.scheduler,
+            "scheduler": self._schedulers[0],
             "interval": interval,
             "monitor": monitor,
             "frequency": frequency,
@@ -197,7 +187,7 @@ class BaseLightningModule(L.LightningModule):
         Returns:
             STEP_OUTPUT: total loss output
         """
-        if self.optimizer is None:
+        if not self._optimizers:
             raise AttributeError("For training, an optimizer is required.")
         if self.loss_aggregator is None:
             raise AttributeError("For training, must include a loss aggregator.")

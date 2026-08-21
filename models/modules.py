@@ -1,11 +1,16 @@
-from typing import Any
+from functools import partial
+from logging import Logger
+from typing import Any, Sequence
 
 import torch
 import torch.nn as nn
+from torch.optim import Optimizer
+from torch.optim.lr_scheduler import LRScheduler
 
 from loss.aggregators import LossOutput
 from models.models import FCN
 from utils.learning import LearningParameters
+from utils.logger import LOGGER
 
 from .base import BaseLightningModule, LossAggregator
 
@@ -21,8 +26,9 @@ class MnistClassifierModule(BaseLightningModule):
         learning_params: LearningParameters,
         transforms: nn.Sequential | None = None,
         loss_aggregator: LossAggregator | None = None,
-        optimizer_cfg: dict[str, Any] | None = None,
-        scheduler_cfg: dict[str, Any] | None = None,
+        optimizers: Sequence[partial[Optimizer]] | partial[Optimizer] | None = None,
+        schedulers: Sequence[partial[LRScheduler]] | partial[LRScheduler] | None = None,
+        logger: Logger = LOGGER,
     ) -> None:
         """
         Initializes the Module class.
@@ -32,16 +38,17 @@ class MnistClassifierModule(BaseLightningModule):
             learning_params (LearningParameters): The learning parameters.
             transforms (nn.Sequential | None, optional): The data transforms. Defaults to None.
             loss_aggregator (LossAggregator | None, optional): The loss aggregator. Defaults to None.
-            optimizer_cfg (dict[str, Any] | None, optional): The optimizer configuration. Defaults to None.
-            scheduler_cfg (dict[str, Any] | None, optional): The scheduler configuration. Defaults to None.
+            optimizer (Optimizer | None, optional): The optimizer. Defaults to None.
+            scheduler (LRScheduler | None, optional): The learning rate scheduler. Defaults to None.
         """
         super().__init__(
             model,
             learning_params,
             transforms,
             loss_aggregator,
-            optimizer_cfg,
-            scheduler_cfg,
+            optimizers,
+            schedulers,
+            logger,
         )
 
     def forward(self, input: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
@@ -88,16 +95,16 @@ class MnistClassifierModule(BaseLightningModule):
         for name in loss.individual:
             log_name = f"{phase} {name.replace('_', ' ')}"
             self.log(
-                log_name, 
-                loss.individual[name], 
-                batch_size=self.learning_params.batch_size, 
-                sync_dist=True
+                log_name,
+                loss.individual[name],
+                batch_size=self.learning_params.batch_size,
+                sync_dist=True,
             )
         self.log(
-            f"{phase} total loss", 
-            loss.total, 
-            prog_bar=True, 
-            batch_size=self.learning_params.batch_size, 
-            sync_dist=True
+            f"{phase} total loss",
+            loss.total,
+            prog_bar=True,
+            batch_size=self.learning_params.batch_size,
+            sync_dist=True,
         )
         return loss.total
