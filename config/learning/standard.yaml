@@ -10,7 +10,7 @@ weight_decay: 0.001
 batch_size: 128
 grad_accumulation: 1
 epochs: 20
-beta_ema: 0.999
+beta_ema: 0.99
 gradient_clip: 0.1
 save_path: saved/
 amp: False
