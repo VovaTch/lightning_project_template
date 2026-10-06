@@ -1,16 +1,19 @@
 from __future__ import annotations
 
 import os
-import warnings
 from abc import abstractmethod
 from functools import partial
 from logging import Logger
-from typing import Any, Protocol, Sequence
+from typing import Any, Callable, Iterator, Protocol, Sequence, TypeVar
 
 import lightning as L
 import torch
 import torch.nn as nn
-from lightning.pytorch.utilities.types import STEP_OUTPUT, OptimizerLRScheduler
+from lightning.pytorch.utilities.types import (
+    STEP_OUTPUT,
+    LRSchedulerConfigType,
+    OptimizerLRScheduler,
+)
 from torch.optim import Optimizer
 from torch.optim.lr_scheduler import LRScheduler
 
@@ -18,11 +21,45 @@ from loss.aggregators import LossOutput
 from utils.learning import LearningParameters
 from utils.logger import LOGGER
 
+T = TypeVar("T")
+OptimizerFactory = Callable[[Iterator[nn.Parameter]], Optimizer]
+SchedulerFactory = Callable[[Optimizer], LRScheduler]
+
 
 class LossAggregator(Protocol):
+    """
+    Structural type of a loss aggregator, as used by the Lightning module.
+    """
+
     def __call__(
         self, pred: dict[str, torch.Tensor], target: dict[str, torch.Tensor]
-    ) -> LossOutput: ...
+    ) -> LossOutput:
+        """
+        Args:
+        *   pred (dict[str, torch.Tensor]): The predicted values.
+        *   target (dict[str, torch.Tensor]): The target values.
+
+        Returns:
+        *   LossOutput: Total and individual losses.
+        """
+        ...
+
+
+def _as_sequence(items: Sequence[T] | T | None) -> list[T]:
+    """
+    Normalizes a single item, a sequence of items, or None into a list.
+
+    Args:
+    *   items (Sequence[T] | T | None): Input item(s).
+
+    Returns:
+    *   list[T]: Items as a list, empty if None.
+    """
+    if items is None:
+        return []
+    if isinstance(items, Sequence):
+        return list(items)
+    return [items]
 
 
 class BaseLightningModule(L.LightningModule):
@@ -37,21 +74,23 @@ class BaseLightningModule(L.LightningModule):
         learning_params: LearningParameters,
         transforms: nn.Sequential | None = None,
         loss_aggregator: LossAggregator | None = None,
-        optimizers: Sequence[partial[Optimizer]] | partial[Optimizer] | None = None,
-        schedulers: Sequence[partial[LRScheduler]] | partial[LRScheduler] | None = None,
+        optimizers: Sequence[OptimizerFactory] | OptimizerFactory | None = None,
+        schedulers: Sequence[SchedulerFactory] | SchedulerFactory | None = None,
         logger: Logger = LOGGER,
     ) -> None:
         """
-        Initializes the BaseModel class.
+        Initializes the BaseLightningModule class.
 
         Args:
         *   model (nn.Module): The neural network model.
         *   learning_params (LearningParameters): The learning parameters for training.
-        *   transforms (nn.Sequential | None, optional): The data transforms to be applied. Defaults to None.
-        *   loss_aggregator (LossAggregator | None, optional): The loss aggregator for collecting losses.
-            Defaults to None.
-        *   optimizer (Optimizer | None, optional): The optimizer to be used. Defaults to None, if so, then AdamW is initialized.
-        *   scheduler (LRScheduler | None, optional): The learning rate scheduler. Defaults to None.
+        *   transforms (nn.Sequential | None, optional): The data transforms. Defaults to None.
+        *   loss_aggregator (LossAggregator | None, optional): The loss aggregator. Defaults to None.
+        *   optimizers (Sequence[OptimizerFactory] | OptimizerFactory | None, optional):
+            Optimizer factories, called with the parameters. Defaults to None (AdamW).
+        *   schedulers (Sequence[SchedulerFactory] | SchedulerFactory | None, optional):
+            Scheduler factories, called with the matching optimizer. Defaults to None.
+        *   logger (Logger, optional): Python logger. Defaults to LOGGER.
         """
         super().__init__()
 
@@ -60,103 +99,98 @@ class BaseLightningModule(L.LightningModule):
         self.loss_aggregator = loss_aggregator
         self.transforms = transforms
 
-        if optimizers is not None and not isinstance(optimizers, Sequence):
-            optimizers = [optimizers]
-        elif optimizers is None:
-            optimizers = [
-                partial(
-                    torch.optim.AdamW,
-                    lr=learning_params.learning_rate,
-                    weight_decay=learning_params.weight_decay,
-                    amsgrad=True,
-                )
-            ]
+        if optimizers is None:
+            optimizers = partial(
+                torch.optim.AdamW,
+                lr=learning_params.learning_rate,
+                weight_decay=learning_params.weight_decay,
+                amsgrad=True,
+            )
+            logger.info("No optimizer given, defaulting to AdamW.")
 
-        self._optimizers = self._setup_optimizers(optimizers)
-
-        if schedulers is not None and not isinstance(schedulers, Sequence):
-            schedulers = [schedulers]
-
-        self._schedulers = self._setup_schedulers(schedulers)
+        # Factories only; built in `configure_optimizers` after compile/wrapping.
+        self._optimizer_factories = _as_sequence(optimizers)
+        self._scheduler_factories = _as_sequence(schedulers)
         self._logger = logger
 
     def _setup_optimizers(
-        self, optimizers: Sequence[partial[Optimizer]]
-    ) -> Sequence[Optimizer]:
+        self, optimizers: Sequence[OptimizerFactory]
+    ) -> list[Optimizer]:
         """
-        Setups optimizers for the model. For custom logic, implement a custom method.
+        Setups optimizers for the model. For custom logic, override this method.
 
         Args:
-            optimizers (Sequence[partial[Optimizer]]): Optimizers to use.
+        *   optimizers (Sequence[OptimizerFactory]): Optimizer factories.
 
         Returns:
-            Sequence[Optimizer]: Sequence of optimizers
+        *   list[Optimizer]: Built optimizers.
         """
         return [optimizer(self.parameters()) for optimizer in optimizers]
 
     def _setup_schedulers(
-        self, schedulers: Sequence[partial[LRScheduler]] | None
-    ) -> Sequence[LRScheduler] | None:
+        self,
+        schedulers: Sequence[SchedulerFactory],
+        optimizers: Sequence[Optimizer],
+    ) -> list[LRScheduler]:
         """
-        Setups learning rate schedulers for the model. For custom logic, implement a custom method.
+        Setups learning rate schedulers, i-th scheduler wraps i-th optimizer.
+        Either no schedulers, or one per optimizer. For custom logic, override this method.
 
         Args:
-            schedulers (Sequence[partial[LRScheduler]] | None): Schedulers to use.
+        *   schedulers (Sequence[SchedulerFactory]): Scheduler factories.
+        *   optimizers (Sequence[Optimizer]): Built optimizers.
+
+        Raises:
+        *   ValueError: Scheduler count is neither 0 nor the optimizer count.
 
         Returns:
-            Sequence[LRScheduler] | None: Sequence of schedulers, None if no schedulers defined.
+        *   list[LRScheduler]: Built schedulers.
         """
-        if schedulers is None:
-            return None
+        if len(schedulers) not in (0, len(optimizers)):
+            raise ValueError(
+                f"Got {len(schedulers)} schedulers for {len(optimizers)} optimizers."
+            )
         return [
-            scheduler(optimizer)
-            for scheduler, optimizer in zip(schedulers, self._optimizers)
+            scheduler(optimizer) for scheduler, optimizer in zip(schedulers, optimizers)
         ]
 
     def configure_optimizers(self) -> OptimizerLRScheduler:
         """
-        Optimizer configuration Lightning module method. If no scheduler, returns only optimizer.
-        If there is a scheduler, returns a settings dictionary and returned to be used during training.
+        Lightning optimizer configuration. Builds every optimizer and pairs it with
+        its scheduler (if any), using the scheduler settings from the learning params.
 
         Returns:
-            OptimizerLRScheduler: Method output, used internally.
+        *   OptimizerLRScheduler: Optimizers, or optimizer + scheduler config dicts.
         """
-        self._logger.info(
-            "Using default optimizer; to customize, implement a custom 'configure_optimizers'"
-        )
-
-        if self._schedulers is None:
-            return [self._optimizers[0]]
-        else:
-            return {
-                "optimizer": self._optimizers[0],
-                "lr_scheduler": self._schedulers[0],
+        optimizers = self._setup_optimizers(self._optimizer_factories)
+        schedulers = self._setup_schedulers(self._scheduler_factories, optimizers)
+        if not schedulers:
+            return optimizers
+        return [
+            {
+                "optimizer": optimizer,
+                "lr_scheduler": self._configure_scheduler_settings(scheduler),
             }
+            for optimizer, scheduler in zip(optimizers, schedulers)
+        ]
 
     def _configure_scheduler_settings(
-        self, interval: str, monitor: str, frequency: int
-    ) -> dict[str, Any]:
+        self, scheduler: LRScheduler
+    ) -> LRSchedulerConfigType:
         """
-        Utility method to return scheduler configurations to `self.configure_optimizers` method.
+        Builds a Lightning scheduler configuration dict from the learning params.
 
         Args:
-            interval (str): Intervals to use the scheduler, either 'step' or 'epoch'.
-            monitor (str): Loss to monitor and base the scheduler on.
-            frequency (int): Frequency to potentially use the scheduler.
-
-        Raises:
-            AttributeError: Must include a scheduler
+        *   scheduler (LRScheduler): Scheduler to configure.
 
         Returns:
-            dict[str, Any]: Scheduler configuration dictionary
+        *   LRSchedulerConfigType: Scheduler configuration dictionary.
         """
-        if self._schedulers is None:
-            raise AttributeError("Must include a scheduler")
         return {
-            "scheduler": self._schedulers[0],
-            "interval": interval,
-            "monitor": monitor,
-            "frequency": frequency,
+            "scheduler": scheduler,
+            "interval": self.learning_params.interval,
+            "monitor": self.learning_params.loss_monitor,
+            "frequency": self.learning_params.frequency,
         }
 
     @abstractmethod
@@ -165,10 +199,10 @@ class BaseLightningModule(L.LightningModule):
         Forward method, to be implemented in a subclass
 
         Args:
-            input (dict[str, torch.Tensor]): Input dictionary of tensors
+        *   input (dict[str, torch.Tensor]): Input dictionary of tensors
 
         Returns:
-            dict[str, torch.Tensor]: Output dictionary of tensors
+        *   dict[str, torch.Tensor]: Output dictionary of tensors
         """
         ...
 
@@ -177,21 +211,18 @@ class BaseLightningModule(L.LightningModule):
         Pytorch Lightning standard training step. Uses the loss aggregator to compute the total loss.
 
         Args:
-            batch (dict[str, Any]): Data batch in a form of a dictionary
-            batch_idx (int): Data index
+        *   batch (dict[str, Any]): Data batch in a form of a dictionary
+        *   batch_idx (int): Data index
 
         Raises:
-            AttributeError: For training, an optimizer is required (usually shouldn't come to this).
-            AttributeError: For training, must include a loss aggregator.
+        *   AttributeError: For training, must include a loss aggregator.
 
         Returns:
-            STEP_OUTPUT: total loss output
+        *   STEP_OUTPUT: total loss output
         """
-        if not self._optimizers:
-            raise AttributeError("For training, an optimizer is required.")
         if self.loss_aggregator is None:
             raise AttributeError("For training, must include a loss aggregator.")
-        return self.step(batch, "training")  # type: ignore
+        return self.step(batch, "training")
 
     def validation_step(
         self, batch: dict[str, Any], batch_idx: int
@@ -201,11 +232,11 @@ class BaseLightningModule(L.LightningModule):
 
 
         Args:
-            batch (dict[str, Any]): Data batch in a form of a dictionary
-            batch_idx (int): Data index
+        *   batch (dict[str, Any]): Data batch in a form of a dictionary
+        *   batch_idx (int): Data index
 
         Returns:
-            STEP_OUTPUT | None: total loss output if there is an aggregator, none if there isn't.
+        *   STEP_OUTPUT | None: total loss output if there is an aggregator, none if there isn't.
         """
         return self.step(batch, "validation")
 
@@ -215,11 +246,11 @@ class BaseLightningModule(L.LightningModule):
         if there is an aggregator.
 
         Args:
-            batch (dict[str, Any]): Data batch in a form of a dictionary
-            batch_idx (int): Data index
+        *   batch (dict[str, Any]): Data batch in a form of a dictionary
+        *   batch_idx (int): Data index
 
         Returns:
-            STEP_OUTPUT | None: total loss output if there is an aggregator, none if there isn't.
+        *   STEP_OUTPUT | None: total loss output if there is an aggregator, none if there isn't.
         """
         output = self.forward(batch)
         if self.loss_aggregator is None:
@@ -251,11 +282,11 @@ class BaseLightningModule(L.LightningModule):
         Utility method to perform the network step and inference.
 
         Args:
-            batch (dict[str, Any]): Data batch in a form of a dictionary
-            phase (str): Phase, used for logging purposes.
+        *   batch (dict[str, Any]): Data batch in a form of a dictionary
+        *   phase (str): Phase, used for logging purposes.
 
         Returns:
-            torch.Tensor | None: Either the total loss if there is a loss aggregator, or none if there is no aggregator.
+        *   torch.Tensor | None: Either the total loss if there is a loss aggregator, or none if there is no aggregator.
         """
         ...
 
@@ -264,30 +295,27 @@ def load_inner_model_state_dict(
     module: BaseLightningModule, checkpoint_path: str
 ) -> BaseLightningModule:
     """
-    Loads the state dictionary of the inner model from a checkpoint file. If the checkpoint file is not found,
-    or if an error occurs while loading the checkpoint, the model is returned without loading pre-trained weights.
+    Loads a Lightning checkpoint's state dict into an uncompiled module. Strips the
+    `_orig_mod.` prefix so checkpoints saved from a `torch.compile`d model also load.
+    Call before compiling the module.
 
     Args:
-        module (BaseLightningModule): The base lightning module.
-        checkpoint_path (str): The path to the checkpoint file.
+    *   module (BaseLightningModule): The base lightning module.
+    *   checkpoint_path (str): The path to the checkpoint file.
+
+    Raises:
+    *   FileNotFoundError: Checkpoint file does not exist.
 
     Returns:
-        BaseLightningModule: The base lightning module with the loaded state dictionary.
-
+    *   BaseLightningModule: The base lightning module with the loaded state dictionary.
     """
     if not os.path.isfile(checkpoint_path):
-        warnings.warn(
-            f"Checkpoint file not found at {checkpoint_path}, skipping weight loading."
-        )
-        return module
+        raise FileNotFoundError(f"Checkpoint file not found at {checkpoint_path}")
 
-    try:
-        checkpoint = torch.load(checkpoint_path)
-        state_dict = checkpoint["state_dict"]
-        module.load_state_dict(state_dict)
-
-    except Exception as e:
-        warnings.warn(f"Error loading checkpoint: {e}, loading model without weights.")
-
-    finally:
-        return module
+    checkpoint = torch.load(checkpoint_path, map_location="cpu")
+    state_dict = {
+        key.replace("_orig_mod.", ""): value
+        for key, value in checkpoint["state_dict"].items()
+    }
+    module.load_state_dict(state_dict)
+    return module

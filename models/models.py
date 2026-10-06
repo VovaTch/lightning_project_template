@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Callable
 
 import torch
 import torch.nn as nn
@@ -15,33 +15,26 @@ class FCN(nn.Module):
         self,
         hidden_size: int = 256,
         num_layers: int = 2,
-        activation_function: nn.Module = nn.LeakyReLU(),
+        activation_function: Callable[[], nn.Module] = nn.LeakyReLU,
     ) -> None:
         """
         Initialize the model.
 
         Args:
-            hidden_size (int): The number of units in the hidden layer. Default is 256.
-            num_layers (int): The number of layers in the model. Must be at least 2. Default is 2.
-            activation_function (nn.Module): The activation function to use in the model. Default is nn.LeakyReLU().
+        *   hidden_size (int): The number of units in the hidden layer. Default is 256.
+        *   num_layers (int): The number of layers in the model. Must be at least 2. Default is 2.
+        *   activation_function (Callable[[], nn.Module]): Activation factory, called once per layer. Default is nn.LeakyReLU.
         """
         super().__init__()
         if num_layers < 2:
             raise ValueError(
                 f"Number of layers must be at least 2, got {num_layers} number of layers"
             )
-        layer_list = (
-            [
-                nn.Linear(28 * 28, hidden_size),
-                activation_function,
-            ]
-            + [
-                nn.Linear(hidden_size, hidden_size),
-                activation_function,
-            ]
-            * (num_layers - 2)
-            + [nn.Linear(hidden_size, 10)]
-        )
+        dims = [28 * 28] + [hidden_size] * (num_layers - 1)
+        layer_list: list[nn.Module] = []
+        for in_dim, out_dim in zip(dims[:-1], dims[1:]):
+            layer_list += [nn.Linear(in_dim, out_dim), activation_function()]
+        layer_list.append(nn.Linear(hidden_size, 10))
         self.network = nn.Sequential(*layer_list)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -49,10 +42,10 @@ class FCN(nn.Module):
         Forward pass of the model.
 
         Args:
-            x (torch.Tensor): Input tensor.
+        *   x (torch.Tensor): Input tensor.
 
         Returns:
-            torch.Tensor: Output tensor.
+        *   torch.Tensor: Output tensor.
         """
         return self.network(x.flatten(start_dim=1))
 
@@ -62,26 +55,26 @@ def fcn(model_name: str, weights_path: str | None = None) -> FCN:
     Create an instance of the FCN model based on the specified model name and optional weights path.
 
     Args:
-        model_name (str): The name of the model configuration to use. Must be one of "small" or "large".
-        weights_path (str | None, optional): The path to the weights file to load. Defaults to None.
+    *   model_name (str): The name of the model configuration to use. Must be one of "small" or "large".
+    *   weights_path (str | None, optional): The path to the weights file to load. Defaults to None.
 
     Returns:
-        FCN: An instance of the FCN model.
+    *   FCN: An instance of the FCN model.
 
     Raises:
-        ValueError: If the specified model name is not found in the configurations.
+    *   ValueError: If the specified model name is not found in the configurations.
 
     """
     configurations: dict[str, dict[str, Any]] = {
         "small": {
             "hidden_size": 128,
             "num_layers": 2,
-            "activation_function": "relu",
+            "activation_function": nn.ReLU,
         },
         "large": {
             "hidden_size": 256,
             "num_layers": 3,
-            "activation_function": "relu",
+            "activation_function": nn.ReLU,
         },
     }
 

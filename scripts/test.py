@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 
 import hydra
@@ -10,6 +12,12 @@ from utils.learning import get_trainer
 
 @hydra.main(version_base=None, config_path="../config", config_name="config")
 def main(cfg: DictConfig) -> None:
+    """
+    Evaluates the saved checkpoint on the configured test set.
+
+    Args:
+    *   cfg (DictConfig): Composed Hydra configuration.
+    """
 
     # Set seed and precision
     torch.manual_seed(1337)
@@ -24,14 +32,14 @@ def main(cfg: DictConfig) -> None:
     # Get lightning module
     module: BaseLightningModule = hydra.utils.instantiate(
         cfg.module, _convert_="partial"
-    ).to("cuda")
-    if cfg.use_torch_compile:
-        module.model = torch.compile(module.model)  # type: ignore
+    )
     module = load_inner_model_state_dict(module, weights_path)
+    if cfg.use_torch_compile:
+        module.model.compile()
 
     # Get trainer
     learning_params = hydra.utils.instantiate(cfg.learning)
-    trainer = get_trainer(learning_params)  # type: ignore
+    trainer = get_trainer(learning_params)
 
     # Fit model
     trainer.test(module, data_module)

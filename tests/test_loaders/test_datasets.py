@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from loaders.datasets import MnistDataset
 
 

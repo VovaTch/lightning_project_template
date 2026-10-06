@@ -13,14 +13,6 @@
             "justMyCode": true
         },
         {
-            "name": "Python: Pull Weights",
-            "type": "debugpy",
-            "request": "launch",
-            "module": "scripts.pull_last_weights",
-            "console": "integratedTerminal",
-            "justMyCode": true
-        },
-        {
             "name": "Python: Train",
             "type": "debugpy",
             "request": "launch",

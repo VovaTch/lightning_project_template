@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Iterable, Protocol
@@ -11,8 +13,8 @@ class LossOutput:
     Represents the output of a loss calculation.
 
     Attributes:
-        total (torch.Tensor): The total loss value.
-        individual (dict[str, torch.Tensor]): A dictionary containing individual loss values for each component.
+    *   total (torch.Tensor): The total loss value.
+    *   individual (dict[str, torch.Tensor]): A dictionary containing individual loss values for each component.
     """
 
     total: torch.Tensor
@@ -35,23 +37,36 @@ class LossAggregator(ABC):
         Perform the forward pass of the loss aggregator.
 
         Args:
-            pred (dict[str, torch.Tensor]): The predicted output of the model.
-            target (dict[str, torch.Tensor]): The target output.
+        *   pred (dict[str, torch.Tensor]): The predicted output of the model.
+        *   target (dict[str, torch.Tensor]): The target output.
 
         Returns:
-            LossOutput: The computed loss output.
+        *   LossOutput: The computed loss output.
         """
         ...
 
 
 class LossComponent(Protocol):
+    """
+    Structural type of a single loss component, consumed by aggregators.
+    """
+
     name: str
     differentiable: bool
     weight: float
 
     def __call__(
         self, pred: dict[str, torch.Tensor], target: dict[str, torch.Tensor]
-    ) -> torch.Tensor: ...
+    ) -> torch.Tensor:
+        """
+        Args:
+        *   pred (dict[str, torch.Tensor]): The predicted values.
+        *   target (dict[str, torch.Tensor]): The target values.
+
+        Returns:
+        *   torch.Tensor: The component loss.
+        """
+        ...
 
 
 class WeightedSumAggregator(LossAggregator):
@@ -59,10 +74,10 @@ class WeightedSumAggregator(LossAggregator):
     Aggregator that computes the weighted sum of multiple loss components.
 
     Args:
-        components (Iterable[LossComponent]): A collection of loss components.
+    *   components (Iterable[LossComponent]): A collection of loss components.
 
     Returns:
-        LossOutput: The aggregated loss output.
+    *   LossOutput: The aggregated loss output.
 
     Example:
 
@@ -77,7 +92,7 @@ class WeightedSumAggregator(LossAggregator):
         Initializes the Aggregator object.
 
         Args:
-            components (Iterable[LossComponent]): An iterable of LossComponent objects.
+        *   components (Iterable[LossComponent]): An iterable of LossComponent objects.
         """
         self.components = components
 
@@ -88,11 +103,11 @@ class WeightedSumAggregator(LossAggregator):
         Calculates the aggregated loss based on the predictions and targets.
 
         Args:
-            pred (dict[str, torch.Tensor]): A dictionary containing the predicted values.
-            target (dict[str, torch.Tensor]): A dictionary containing the target values.
+        *   pred (dict[str, torch.Tensor]): A dictionary containing the predicted values.
+        *   target (dict[str, torch.Tensor]): A dictionary containing the target values.
 
         Returns:
-            LossOutput: An instance of the LossOutput class representing the aggregated loss.
+        *   LossOutput: An instance of the LossOutput class representing the aggregated loss.
         """
         loss = LossOutput(torch.tensor(0.0), {})
 

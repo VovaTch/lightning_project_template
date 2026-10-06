@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import warnings
 from dataclasses import dataclass
 from typing import Any
@@ -7,12 +9,11 @@ import torch
 from lightning.pytorch.callbacks import (
     EarlyStopping,
     LearningRateMonitor,
-    ModelCheckpoint,
     ModelSummary,
 )
 from lightning.pytorch.loggers import Logger, TensorBoardLogger
 
-from utils.ema import EMA
+from utils.ema import EMA, EMAModelCheckpoint
 
 
 @dataclass
@@ -48,10 +49,10 @@ def get_trainer(learning_parameters: LearningParameters) -> L.Trainer:
     Initializes a Pytorch Lightning training, given a learning parameters object
 
     Args:
-        learning_parameters (LearningParameters): learning parameters object
+    *   learning_parameters (LearningParameters): learning parameters object
 
     Returns:
-        pl.Trainer: Pytorch lightning trainer
+    *   pl.Trainer: Pytorch lightning trainer
     """
     # Set device
     if not torch.cuda.is_available():
@@ -74,7 +75,8 @@ def get_trainer(learning_parameters: LearningParameters) -> L.Trainer:
     )
     loggers: list[Logger] = [tensorboard_logger]
 
-    model_checkpoint_callback = ModelCheckpoint(
+    model_checkpoint_callback = EMAModelCheckpoint(
+        ema=ema,
         dirpath=save_folder,
         filename=learning_parameters.model_name,
         save_weights_only=True,

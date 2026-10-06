@@ -24,8 +24,10 @@ devices: auto
 num_workers: 8
 pin_memory: True
 
+# Monitoring (checkpointing, early stopping, plateau schedulers)
+loss_monitor: "validation total loss"
+trigger_loss: 0.00000001
+
 # Scheduler parameters
-loss_monitor: ${schedulers.module_params.loss_monitor}
 interval: ${schedulers.module_params.interval}
 frequency: ${schedulers.module_params.frequency}
-trigger_loss: ${schedulers.module_params.trigger_loss}

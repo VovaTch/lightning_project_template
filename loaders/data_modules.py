@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import lightning as L
 from torch.utils.data import DataLoader, Dataset
 
@@ -9,16 +11,16 @@ class SeparatedSetModule(L.LightningDataModule):
     LightningDataModule subclass for managing separated datasets (train, validation, and test) in a PyTorch Lightning project.
 
     Args:
-        learning_params (LearningParameters): A data class or dictionary containing various learning parameters.
-        train_dataset (Dataset): The dataset used for training.
-        val_dataset (Dataset): The dataset used for validation.
-        test_dataset (Dataset | None, optional): The dataset used for testing. If not provided,
-        the validation dataset is used for testing.
+    *   learning_params (LearningParameters): A data class or dictionary containing various learning parameters.
+    *   train_dataset (Dataset): The dataset used for training.
+    *   val_dataset (Dataset): The dataset used for validation.
+    *   test_dataset (Dataset | None, optional): The dataset used for testing. If not provided,
+    *   the validation dataset is used for testing.
 
     Attributes:
-        train_dataset (Dataset): The training dataset.
-        val_dataset (Dataset): The validation dataset.
-        test_dataset (Dataset): The testing dataset.
+    *   train_dataset (Dataset): The training dataset.
+    *   val_dataset (Dataset): The validation dataset.
+    *   test_dataset (Dataset): The testing dataset.
 
     Note:
         The `SeparatedSetModule` class is designed to manage and provide data loaders for the training,
@@ -43,7 +45,7 @@ class SeparatedSetModule(L.LightningDataModule):
         Returns a DataLoader for the training dataset.
 
         Returns:
-            DataLoader: A DataLoader for the training dataset.
+        *   DataLoader: A DataLoader for the training dataset.
         """
         return DataLoader(
             self.train_dataset,
@@ -58,7 +60,7 @@ class SeparatedSetModule(L.LightningDataModule):
         Returns a DataLoader for the validation dataset.
 
         Returns:
-            DataLoader: A DataLoader for the validation dataset.
+        *   DataLoader: A DataLoader for the validation dataset.
         """
         return DataLoader(
             self.val_dataset,
@@ -73,7 +75,7 @@ class SeparatedSetModule(L.LightningDataModule):
         Returns a DataLoader for the testing dataset.
 
         Returns:
-            DataLoader: A DataLoader for the testing dataset.
+        *   DataLoader: A DataLoader for the testing dataset.
         """
         return DataLoader(
             self.test_dataset,

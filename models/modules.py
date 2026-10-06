@@ -1,18 +1,22 @@
-from functools import partial
+from __future__ import annotations
+
 from logging import Logger
 from typing import Any, Sequence
 
 import torch
 import torch.nn as nn
-from torch.optim import Optimizer
-from torch.optim.lr_scheduler import LRScheduler
 
 from loss.aggregators import LossOutput
 from models.models import FCN
 from utils.learning import LearningParameters
 from utils.logger import LOGGER
 
-from .base import BaseLightningModule, LossAggregator
+from .base import (
+    BaseLightningModule,
+    LossAggregator,
+    OptimizerFactory,
+    SchedulerFactory,
+)
 
 
 class MnistClassifierModule(BaseLightningModule):
@@ -26,20 +30,23 @@ class MnistClassifierModule(BaseLightningModule):
         learning_params: LearningParameters,
         transforms: nn.Sequential | None = None,
         loss_aggregator: LossAggregator | None = None,
-        optimizers: Sequence[partial[Optimizer]] | partial[Optimizer] | None = None,
-        schedulers: Sequence[partial[LRScheduler]] | partial[LRScheduler] | None = None,
+        optimizers: Sequence[OptimizerFactory] | OptimizerFactory | None = None,
+        schedulers: Sequence[SchedulerFactory] | SchedulerFactory | None = None,
         logger: Logger = LOGGER,
     ) -> None:
         """
         Initializes the Module class.
 
         Args:
-            model (FCN): The model to be used.
-            learning_params (LearningParameters): The learning parameters.
-            transforms (nn.Sequential | None, optional): The data transforms. Defaults to None.
-            loss_aggregator (LossAggregator | None, optional): The loss aggregator. Defaults to None.
-            optimizer (Optimizer | None, optional): The optimizer. Defaults to None.
-            scheduler (LRScheduler | None, optional): The learning rate scheduler. Defaults to None.
+        *   model (FCN): The model to be used.
+        *   learning_params (LearningParameters): The learning parameters.
+        *   transforms (nn.Sequential | None, optional): The data transforms. Defaults to None.
+        *   loss_aggregator (LossAggregator | None, optional): The loss aggregator. Defaults to None.
+        *   optimizers (Sequence[OptimizerFactory] | OptimizerFactory | None, optional):
+            Optimizer factories. Defaults to None (AdamW).
+        *   schedulers (Sequence[SchedulerFactory] | SchedulerFactory | None, optional):
+            Scheduler factories. Defaults to None.
+        *   logger (Logger, optional): Python logger. Defaults to LOGGER.
         """
         super().__init__(
             model,
@@ -56,10 +63,10 @@ class MnistClassifierModule(BaseLightningModule):
         Forward pass of the MNIST classifier.
 
         Args:
-            x (dict[str, torch.Tensor]): Input data dictionary containing "images" tensor.
+        *   input (dict[str, torch.Tensor]): Input data dictionary containing "images" tensor.
 
         Returns:
-            dict[str, torch.Tensor]: Output dictionary containing "logits" tensor.
+        *   dict[str, torch.Tensor]: Output dictionary containing "logits" tensor.
         """
         outputs = self.model(input["images"])
         return {"logits": outputs}
@@ -69,11 +76,11 @@ class MnistClassifierModule(BaseLightningModule):
         Performs a single training/validation step.
 
         Args:
-            batch (dict[str, Any]): Input batch data.
-            phase (str): The phase of the training (e.g., "train", "val").
+        *   batch (dict[str, Any]): Input batch data.
+        *   phase (str): The phase of the training (e.g., "train", "val").
 
         Returns:
-            torch.Tensor | None: The total loss if available, otherwise None.
+        *   torch.Tensor | None: The total loss if available, otherwise None.
         """
         outputs = self(batch)
         if self.loss_aggregator is not None:
@@ -86,11 +93,11 @@ class MnistClassifierModule(BaseLightningModule):
         Handles the loss logging (to Tensorboard).
 
         Args:
-            loss (LossOutput): The loss output object containing individual losses.
-            phase (str): The phase of the training (e.g., "train", "val").
+        *   loss (LossOutput): The loss output object containing individual losses.
+        *   phase (str): The phase of the training (e.g., "train", "val").
 
         Returns:
-            torch.Tensor: The total loss.
+        *   torch.Tensor: The total loss.
         """
         for name in loss.individual:
             log_name = f"{phase} {name.replace('_', ' ')}"

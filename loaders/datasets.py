@@ -19,9 +19,9 @@ class MnistDataset(Dataset):
         Constructor method
 
         Args:
-            stage (Stage): Stage of the training
-            data_path (str): Path of the data for the model
-            preload (bool, optional): Pre-load the model, here it's unused. Defaults to False.
+        *   stage (Stage): Stage of the training
+        *   data_path (str): Path of the data for the model
+        *   preload (bool, optional): Pre-load the model, here it's unused. Defaults to False.
         """
         super().__init__()
         if stage == Stage.TRAIN:
@@ -34,12 +34,12 @@ class MnistDataset(Dataset):
         Standard Pytorch getitem method, gets a dictionary of tensors as a data.
 
         Args:
-            index (int): Index of data to get
+        *   index (int): Index of data to get
 
         Returns:
-            dict[str, Any]: A data dictionary with 2 entries:
-                -   'images' for image data
-                -   'class' for ground truth classes
+        *   dict[str, Any]: A data dictionary with 2 entries:
+            -   'images' for image data
+            -   'class' for ground truth classes
         """
         data = self.base_dataset.__getitem__(index)
         return {"images": TF.to_tensor(data[0]), "class": data[1]}
@@ -49,6 +49,6 @@ class MnistDataset(Dataset):
         Length of the dataset
 
         Returns:
-            int: Dataset length
+        *   int: Dataset length
         """
         return len(self.base_dataset)
