@@ -25,7 +25,7 @@ num_workers: 8
 pin_memory: True
 
 # Monitoring (checkpointing, early stopping, plateau schedulers)
-loss_monitor: "validation total loss"
+loss_monitor: "validation/total loss"
 trigger_loss: 0.00000001
 
 # Scheduler parameters
