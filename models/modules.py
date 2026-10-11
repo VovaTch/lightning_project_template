@@ -100,7 +100,7 @@ class MnistClassifierModule(BaseLightningModule):
         *   torch.Tensor: The total loss.
         """
         for name in loss.individual:
-            log_name = f"{phase} {name.replace('_', ' ')}"
+            log_name = f"{phase}/{name.replace('_', ' ')}"
             self.log(
                 log_name,
                 loss.individual[name],
@@ -108,7 +108,7 @@ class MnistClassifierModule(BaseLightningModule):
                 sync_dist=True,
             )
         self.log(
-            f"{phase} total loss",
+            f"{phase}/total loss",
             loss.total,
             prog_bar=True,
             batch_size=self.learning_params.batch_size,
