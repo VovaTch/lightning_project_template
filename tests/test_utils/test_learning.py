@@ -59,6 +59,7 @@ def test_checkpoint_holds_ema_weights(tmp_path: Path) -> None:
 
     optimizer = trainer.optimizers[0]
     assert isinstance(optimizer, EMAOptimizer)
+    assert (tmp_path / "ema_test_last.ckpt").is_file()
     checkpoint = torch.load(tmp_path / "ema_test.ckpt", map_location="cpu")
     saved = [checkpoint["state_dict"][name] for name, _ in module.named_parameters()]
     current = [param.detach().cpu() for param in module.parameters()]

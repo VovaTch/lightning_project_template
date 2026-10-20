@@ -54,7 +54,7 @@ def learning_params() -> LearningParameters:
         test_split=0.1,
         devices=[0],
         num_workers=4,
-        loss_monitor="validation total loss",
+        loss_monitor="validation/total loss",
         interval="step",
         frequency=1,
         trigger_loss=0.0,

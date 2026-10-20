@@ -37,7 +37,7 @@ class LearningParameters:
     test_split: float = 0.01
     devices: Any = "auto"
     num_workers: int = 0
-    loss_monitor: str = "validation total loss"
+    loss_monitor: str = "validation/total loss"
     trigger_loss: float = 0.0
     interval: str = "step"
     frequency: int = 1
@@ -81,8 +81,12 @@ def get_trainer(learning_parameters: LearningParameters) -> L.Trainer:
         filename=learning_parameters.model_name,
         save_weights_only=True,
         save_top_k=1,
+        save_last=True,
         monitor=learning_parameters.loss_monitor,
         enable_version_counter=False,
+    )
+    model_checkpoint_callback.CHECKPOINT_NAME_LAST = (
+        f"{learning_parameters.model_name}_last"
     )
     early_stopping = EarlyStopping(
         monitor=learning_parameters.loss_monitor,
